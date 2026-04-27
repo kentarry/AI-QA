@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>品檢流程看板</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0f0f1a;--surface:#1a1a2e;--card:#16213e;--card-hover:#1a2744;
+--accent:#6c63ff;--accent2:#e94560;--accent3:#00d2ff;--accent4:#0f9b58;
+--text:#ffffff;--text-dim:#b0b0c0;--border:rgba(255,255,255,.1);
+--shadow:0 8px 32px rgba(0,0,0,.4);--radius:14px;
+}
+body{font-family:'Noto Sans TC','Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:15px}
+
+/* Header */
+.header{padding:24px 32px;display:flex;align-items:center;justify-content:space-between;
+background:linear-gradient(135deg,rgba(108,99,255,.12),rgba(0,210,255,.08));
+border-bottom:1px solid var(--border);backdrop-filter:blur(20px);flex-wrap:wrap;gap:16px}
+.header-left{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.header h1{font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,#6c63ff,#00d2ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+.search-input{
+  background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);
+  padding:10px 20px 10px 42px;border-radius:24px;font-size:1rem;outline:none;width:260px;transition:all .2s;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23b0b0c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+  background-repeat:no-repeat;background-position:14px center;
+}
+.search-input::placeholder{color:var(--text-dim)}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,99,255,.15);width:300px}
+
+.header-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.stats{display:flex;gap:10px}
+.stat{background:rgba(255,255,255,.06);padding:8px 16px;border-radius:24px;font-size:.9rem;color:var(--text-dim);border:1px solid var(--border)}
+.stat span{font-weight:700;color:var(--text);font-size:1rem;margin-left:4px}
+.btn-add-global{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;border:none;padding:10px 24px;border-radius:12px;
+font-size:1rem;cursor:pointer;font-weight:600;transition:all .25s;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.btn-add-global:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(108,99,255,.4)}
+.btn-outline{background:transparent;color:var(--text-dim);border:1px solid var(--border);padding:10px 16px;border-radius:12px;
+font-size:.95rem;cursor:pointer;font-weight:600;transition:all .2s;white-space:nowrap}
+.btn-outline:hover{background:rgba(255,255,255,.08);color:var(--text)}
+
+/* Board */
+.board{display:flex;gap:20px;padding:24px 32px;min-height:calc(100vh - 100px);align-items:flex-start;overflow-x:auto;padding-bottom:50px}
+.board::-webkit-scrollbar{height:10px}
+.board::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:10px}
+
+/* Column */
+.column{flex:1 1 260px;min-width:280px;max-width:340px;background:var(--surface);border-radius:var(--radius);
+border:1px solid var(--border);display:flex;flex-direction:column;transition:all .3s;max-height:calc(100vh - 150px)}
+.column.drag-over{border-color:var(--accent);box-shadow:0 0 30px rgba(108,99,255,.2)}
+.col-header{padding:20px 24px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.col-title{display:flex;align-items:center;gap:12px;font-weight:700;font-size:1.15rem;letter-spacing:0.5px}
+.col-dot{width:12px;height:12px;border-radius:50%}
+.col-count{background:rgba(255,255,255,.08);padding:4px 14px;border-radius:16px;font-size:.9rem;color:var(--text);font-weight:700}
+.col-body{padding:16px;flex:1;min-height:120px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+.col-body::-webkit-scrollbar{width:6px}
+.col-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:6px}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;
+cursor:grab;transition:all .25s;position:relative;animation:cardIn .35s ease}
+.card:hover{background:var(--card-hover);transform:translateY(-3px);box-shadow:var(--shadow);border-color:rgba(255,255,255,.25)}
+.card.dragging{opacity:.5;transform:rotate(2deg)}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.card-title{font-weight:600;font-size:1.15rem;flex:1;word-break:break-word;line-height:1.5;color:var(--text)}
+.card-actions{display:flex;gap:4px;opacity:0;transition:opacity .2s}
+.card:hover .card-actions{opacity:1}
+.card-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px;border-radius:8px;font-size:1.05rem;transition:all .2s;width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.card-btn:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.card-btn.del:hover{color:var(--accent2)}
+
+/* Priority Tags */
+.card-priority{font-size:.8rem;padding:4px 10px;border-radius:6px;font-weight:700;display:inline-block;margin-bottom:10px;letter-spacing:0.5px}
+.priority-high{background:rgba(233,69,96,.2);color:#ff6b81;border:1px solid rgba(233,69,96,.4)}
+.priority-medium{background:rgba(245,166,35,.2);color:#f5a623;border:1px solid rgba(245,166,35,.4)}
+.priority-low{background:rgba(15,155,88,.2);color:#2ecc71;border:1px solid rgba(15,155,88,.4)}
+
+.card-members{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.member-tag{background:linear-gradient(135deg,rgba(108,99,255,.25),rgba(0,210,255,.2));padding:4px 12px;border-radius:8px;
+font-size:.85rem;color:#64dfdf;border:1px solid rgba(0,210,255,.3);font-weight:500}
+.card-note{font-size:.95rem;color:var(--text-dim);line-height:1.6;background:rgba(255,255,255,.04);padding:12px 14px;border-radius:8px;
+margin-top:10px;border-left:4px solid rgba(108,99,255,.5);word-break:break-word;white-space:pre-wrap}
+.card-date{font-size:.8rem;color:rgba(255,255,255,.3);margin-top:16px;display:flex;justify-content:flex-end}
+.card-move{display:flex;gap:8px;margin-top:16px;border-top:1px solid rgba(255,255,255,.06);padding-top:12px}
+.move-btn{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text-dim);padding:6px 12px;border-radius:8px;
+font-size:.85rem;cursor:pointer;transition:all .2s;flex:1;text-align:center;font-weight:600}
+.move-btn:hover{background:rgba(108,99,255,.2);color:var(--text);border-color:rgba(108,99,255,.4)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(10px);display:none;
+align-items:center;justify-content:center;z-index:100;animation:fadeIn .2s}
+.modal-overlay.active{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px 40px;
+width:92%;max-width:600px;box-shadow:0 30px 100px rgba(0,0,0,.6);animation:slideUp .3s ease;max-height:90vh;overflow-y:auto}
+.modal::-webkit-scrollbar{width:8px}
+.modal::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:8px}
+
+.modal h2{font-size:1.5rem;margin-bottom:28px;background:linear-gradient(135deg,#6c63ff,#00d2ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}
+.form-group{margin-bottom:22px}
+.form-group label{display:block;font-size:1rem;color:var(--text-dim);margin-bottom:10px;font-weight:600}
+.form-group input,.form-group textarea,.form-group select{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);
+color:var(--text);padding:14px 18px;border-radius:12px;font-size:1.05rem;font-family:inherit;transition:all .2s;outline:none}
+.form-group input::placeholder, .form-group textarea::placeholder{color:rgba(255,255,255,.3)}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent);background:rgba(255,255,255,.08);box-shadow:0 0 0 3px rgba(108,99,255,.15)}
+.form-group textarea{resize:vertical;min-height:100px;line-height:1.5}
+.form-row{display:flex;gap:20px}
+.form-row .form-group{flex:1;margin-bottom:0}
+
+.members-input{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:12px;min-height:50px;align-items:center;cursor:text;transition:all .2s}
+.members-input.focused{border-color:var(--accent);background:rgba(255,255,255,.08);box-shadow:0 0 0 3px rgba(108,99,255,.15)}
+.members-input .tag{background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(0,210,255,.25));padding:6px 12px;border-radius:8px;
+font-size:.95rem;display:flex;align-items:center;gap:8px;color:#64dfdf;font-weight:500}
+.members-input .tag button{background:none;border:none;color:var(--accent2);cursor:pointer;font-size:1.1rem;padding:0;line-height:1}
+.members-input input{background:none;border:none;color:var(--text);outline:none;font-size:1.05rem;flex:1;min-width:100px;padding:4px}
+.modal-btns{display:flex;gap:16px;margin-top:32px}
+.modal-btns button{flex:1;padding:14px;border-radius:12px;border:none;font-size:1.1rem;font-weight:700;cursor:pointer;transition:all .25s;letter-spacing:0.5px}
+.btn-save{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff}
+.btn-save:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(108,99,255,.4)}
+.btn-cancel{background:rgba(255,255,255,.08);color:var(--text);border:1px solid rgba(255,255,255,.15)!important}
+.btn-cancel:hover{background:rgba(255,255,255,.15)}
+.btn-danger{background:rgba(233,69,96,.15);color:#ff6b81;border:1px solid rgba(233,69,96,.3)!important}
+.btn-danger:hover{background:rgba(233,69,96,.25);color:#ff879a}
+
+/* Animations */
+@keyframes cardIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* Placeholder */
+.empty-msg{text-align:center;color:rgba(255,255,255,.2);font-size:1rem;padding:50px 10px;user-select:none;font-weight:500}
+
+/* Toast */
+.toast{position:fixed;bottom:32px;right:32px;background:var(--surface);border:1px solid var(--border);padding:16px 28px;
+border-radius:14px;color:var(--text);font-size:1.05rem;font-weight:600;box-shadow:var(--shadow);z-index:200;
+animation:slideUp .3s ease;transition:opacity .3s;border-left:5px solid var(--accent)}
+.toast.hide{opacity:0}
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>📋 品檢流程看板</h1>
+    <input type="text" id="searchInput" class="search-input" placeholder="搜尋項目或成員…" onkeyup="render()">
+  </div>
+  <div class="header-right">
+    <div class="stats">
+      <div class="stat" title="總計項目數">總數 <span id="statTotal">0</span></div>
+      <div class="stat" title="進行中與驗收中">進行中 <span id="statActive">0</span></div>
+      <div class="stat" title="已完成項目">已完成 <span id="statDone">0</span></div>
+      <div class="stat" title="被駁回項目" style="border-color:rgba(233,69,96,.3)">已駁回 <span id="statRejected" style="color:var(--accent2)">0</span></div>
+    </div>
+    <button class="btn-outline" onclick="exportData()" title="將資料匯出成 JSON 以備份或分享">匯出資料</button>
+    <button class="btn-outline" onclick="document.getElementById('importFile').click()" title="從 JSON 匯入資料">匯入資料</button>
+    <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+    <button class="btn-add-global" onclick="openModal()">＋ 新增項目</button>
+  </div>
+</div>
+
+<div class="board" id="board"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">新增項目</h2>
+    <div class="form-group">
+      <label>項目名稱 *</label>
+      <input type="text" id="inputName" placeholder="輸入項目名稱…">
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label>所屬狀態</label>
+        <select id="inputStatus">
+          <option value="todo">尚未製作</option>
+          <option value="progress">製作中</option>
+          <option value="review">驗收中</option>
+          <option value="done">已完成</option>
+          <option value="rejected">已駁回</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>優先級別</label>
+        <select id="inputPriority">
+          <option value="high">高 (High)</option>
+          <option value="medium" selected>中 (Medium)</option>
+          <option value="low">低 (Low)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top:18px">
+      <label>成員名稱（輸入後按 Enter 新增多位）</label>
+      <div class="members-input" id="membersBox" onclick="document.getElementById('memberInput').focus()">
+        <input type="text" id="memberInput" placeholder="輸入名稱後按 Enter…">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>備註說明</label>
+      <textarea id="inputNote" placeholder="輸入備註或相關資訊…"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-danger" id="btnDelete" style="display:none" onclick="deleteItem()">刪除</button>
+      <button class="btn-save" onclick="saveItem()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 定義所有看板欄位
+const COLUMNS = [
+  {id:'todo',     label:'尚未製作', color:'#6c63ff'},
+  {id:'progress', label:'製作中',   color:'#f5a623'},
+  {id:'review',   label:'驗收中',   color:'#00d2ff'},
+  {id:'done',     label:'已完成',   color:'#0f9b58'},
+  {id:'rejected', label:'已駁回',   color:'#e94560'}
+];
+const LS_KEY = 'kanban_items_v3';
+
+let items = [];
+let editingId = null;
+let tempMembers = [];
+let isDragging = false;
+let hashState = '';
+
+// 即時同步函式
+function fetchData() {
+  const isModalOpen = document.getElementById('modalOverlay').classList.contains('active');
+  if (isDragging || isModalOpen) return; // 正在操作卡片或填寫表單時，暫停畫面覆蓋以免中斷操作
+  
+  fetch('/api/data')
+    .then(r => r.json())
+    .then(data => {
+      if (!Array.isArray(data)) return;
+      const newHash = JSON.stringify(data);
+      // 比對資料，只有當有別人更新內容時才重新渲染畫面，避免畫面閃爍
+      if (newHash !== hashState) {
+        items = data;
+        hashState = newHash;
+        render();
+      }
+    })
+    .catch(() => {}); // 伺服器未開啟時略過
+}
+
+// 啟動即時同步 (每 2 秒抓取一次最新資料)
+fetchData();
+setInterval(fetchData, 2000);
+
+// ── Render ──
+function render() {
+  const board = document.getElementById('board');
+  const searchKeyword = (document.getElementById('searchInput').value || '').toLowerCase();
+  
+  board.innerHTML = '';
+  
+  COLUMNS.forEach(col => {
+    // 過濾出屬於該欄位的卡片
+    let colItems = items.filter(i => i.status === col.id);
+    
+    // 搜尋過濾
+    if (searchKeyword) {
+      colItems = colItems.filter(i => 
+        i.name.toLowerCase().includes(searchKeyword) || 
+        (i.members && i.members.some(m => m.toLowerCase().includes(searchKeyword))) ||
+        (i.note && i.note.toLowerCase().includes(searchKeyword))
+      );
+    }
+
+    const div = document.createElement('div');
+    div.className = 'column';
+    div.dataset.status = col.id;
+    
+    // 拖曳事件綁定
+    div.addEventListener('dragover', e => { e.preventDefault(); div.classList.add('drag-over'); });
+    div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
+    div.addEventListener('drop', e => { e.preventDefault(); div.classList.remove('drag-over'); dropCard(e, col.id); });
+
+    div.innerHTML = `
+      <div class="col-header">
+        <div class="col-title"><span class="col-dot" style="background:${col.color}"></span>${col.label}</div>
+        <span class="col-count">${colItems.length}</span>
+      </div>
+      <div class="col-body" id="col-${col.id}">
+        ${colItems.length === 0 ? '<div class="empty-msg">尚無項目或拖曳至此</div>' : ''}
+      </div>`;
+    board.appendChild(div);
+
+    const body = div.querySelector('.col-body');
+    // 依據時間排序，新的在上面
+    colItems.sort((a,b) => b.createdAt - a.createdAt).forEach(item => {
+      body.appendChild(createCard(item, col));
+    });
+  });
+  
+  updateStats();
+}
+
+function createCard(item, col) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.draggable = true;
+  card.dataset.id = item.id;
+  card.addEventListener('dragstart', e => { 
+    isDragging = true;
+    e.dataTransfer.setData('text/plain', item.id); 
+    card.classList.add('dragging'); 
+  });
+  card.addEventListener('dragend', () => {
+    isDragging = false;
+    card.classList.remove('dragging');
+  });
+
+  const colIdx = COLUMNS.findIndex(c => c.id === col.id);
+  const moves = [];
+  
+  // 決定卡片底部的移動按鈕
+  // 1. "已駁回" (rejected) 不顯示任何快捷移動按鈕
+  // 2. "已完成" (done) 不顯示向左(退回驗收中)按鈕，也不顯示向右按鈕
+  if (col.id !== 'done' && col.id !== 'rejected') {
+    if (colIdx > 0) {
+      moves.push({id: COLUMNS[colIdx-1].id, label: '◀ ' + COLUMNS[colIdx-1].label});
+    }
+    if (colIdx < COLUMNS.length - 1 && COLUMNS[colIdx+1].id !== 'rejected') {
+      moves.push({id: COLUMNS[colIdx+1].id, label: COLUMNS[colIdx+1].label + ' ▶'});
+    }
+  }
+
+  const prioLabels = {high:'高', medium:'中', low:'低'};
+  const prioColors = {high:'priority-high', medium:'priority-medium', low:'priority-low'};
+  const prio = item.priority || 'medium';
+
+  card.innerHTML = `
+    <div class="card-top">
+      <div class="card-title">${esc(item.name)}</div>
+      <div class="card-actions">
+        <button class="card-btn" onclick="openModal('${item.id}')" title="編輯">✏️</button>
+        <button class="card-btn del" onclick="confirmDel('${item.id}')" title="刪除">🗑️</button>
+      </div>
+    </div>
+    <div class="card-priority ${prioColors[prio]}">優先級: ${prioLabels[prio]}</div>
+    ${item.members && item.members.length ? `<div class="card-members">${item.members.map(m=>`<span class="member-tag">${esc(m)}</span>`).join('')}</div>` : ''}
+    ${item.note ? `<div class="card-note">${esc(item.note)}</div>` : ''}
+    <div class="card-date">${formatDate(item.createdAt)}</div>
+    ${moves.length ? `<div class="card-move">${moves.map(m=>`<button class="move-btn" onclick="moveCard('${item.id}','${m.id}')">${m.label}</button>`).join('')}</div>` : ''}
+  `;
+  return card;
+}
+
+function dropCard(e, newStatus) {
+  const id = e.dataTransfer.getData('text/plain');
+  const item = items.find(i => i.id === id);
+  if (item && item.status !== newStatus) {
+    item.status = newStatus;
+    if (newStatus === 'done') item.completedAt = Date.now();
+    save(); 
+    toast(`已移至「${COLUMNS.find(c=>c.id===newStatus).label}」`);
+  }
+}
+
+function moveCard(id, newStatus) {
+  const item = items.find(i => i.id === id);
+  if (item) {
+    item.status = newStatus;
+    if (newStatus === 'done') item.completedAt = Date.now();
+    save(); 
+    toast(`已移至「${COLUMNS.find(c=>c.id===newStatus).label}」`);
+  }
+}
+
+// ── Modal ──
+function openModal(id) {
+  editingId = id || null;
+  tempMembers = [];
+  const overlay = document.getElementById('modalOverlay');
+  overlay.classList.add('active');
+  document.getElementById('modalTitle').textContent = id ? '編輯項目' : '新增項目';
+  document.getElementById('btnDelete').style.display = id ? 'block' : 'none';
+
+  if (id) {
+    const item = items.find(i => i.id === id);
+    document.getElementById('inputName').value = item.name;
+    document.getElementById('inputStatus').value = item.status;
+    document.getElementById('inputPriority').value = item.priority || 'medium';
+    document.getElementById('inputNote').value = item.note || '';
+    tempMembers = [...(item.members || [])];
+  } else {
+    document.getElementById('inputName').value = '';
+    document.getElementById('inputStatus').value = 'todo';
+    document.getElementById('inputPriority').value = 'medium';
+    document.getElementById('inputNote').value = '';
+  }
+  renderMembers();
+  setTimeout(() => document.getElementById('inputName').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+  editingId = null; tempMembers = [];
+}
+
+function saveItem() {
+  const name = document.getElementById('inputName').value.trim();
+  if (!name) { 
+    document.getElementById('inputName').style.borderColor='var(--accent2)'; 
+    document.getElementById('inputName').focus();
+    return; 
+  }
+  
+  const status = document.getElementById('inputStatus').value;
+  const priority = document.getElementById('inputPriority').value;
+  const note = document.getElementById('inputNote').value.trim();
+
+  if (editingId) {
+    const item = items.find(i => i.id === editingId);
+    item.name = name; 
+    item.status = status; 
+    item.priority = priority; 
+    item.note = note; 
+    item.members = [...tempMembers];
+    if (status === 'done' && !item.completedAt) item.completedAt = Date.now();
+    toast('✅ 已更新項目');
+  } else {
+    items.push({
+      id: uid(), 
+      name, 
+      status, 
+      priority, 
+      note, 
+      members: [...tempMembers], 
+      createdAt: Date.now()
+    });
+    toast('✅ 已新增項目');
+  }
+  
+  // 重置搜尋
+  document.getElementById('searchInput').value = '';
+  save(); 
+  closeModal();
+}
+
+function deleteItem() {
+  if (!editingId) return;
+  items = items.filter(i => i.id !== editingId);
+  save(); 
+  closeModal(); 
+  toast('🗑️ 已刪除項目');
+}
+
+function confirmDel(id) {
+  if (confirm('確定要刪除此項目？')) {
+    items = items.filter(i => i.id !== id);
+    save(); 
+    toast('🗑️ 已刪除項目');
+  }
+}
+
+// ── Members Tags ──
+function renderMembers() {
+  const box = document.getElementById('membersBox');
+  box.querySelectorAll('.tag').forEach(t => t.remove());
+  const input = document.getElementById('memberInput');
+  tempMembers.forEach((m, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.innerHTML = `${esc(m)} <button onclick="removeMember(${i})">✕</button>`;
+    box.insertBefore(tag, input);
+  });
+}
+
+function removeMember(i) { 
+  tempMembers.splice(i, 1); 
+  renderMembers(); 
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('memberInput');
+  const box = document.getElementById('membersBox');
+  
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const v = input.value.trim();
+      if (v && !tempMembers.includes(v)) { 
+        tempMembers.push(v); 
+        input.value = ''; 
+        renderMembers(); 
+      }
+    }
+    if (e.key === 'Backspace' && !input.value && tempMembers.length) { 
+      tempMembers.pop(); 
+      renderMembers(); 
+    }
+  });
+  
+  input.addEventListener('focus', () => box.classList.add('focused'));
+  input.addEventListener('blur', () => box.classList.remove('focused'));
+
+  document.getElementById('modalOverlay').addEventListener('click', e => { 
+    if (e.target === e.currentTarget) closeModal(); 
+  });
+  
+  document.addEventListener('keydown', e => { 
+    if (e.key === 'Escape') closeModal(); 
+  });
+  
+  render();
+});
+
+// ── Helpers ──
+function save() { 
+  fetch('/api/data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(items)
+  })
+  .then(() => {
+    hashState = JSON.stringify(items);
+    render();
+  })
+  .catch(() => toast('❌ 同步失敗，請確認伺服器是否開啟'));
+}
+
+function uid() { 
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); 
+}
+
+function esc(s) { 
+  const d = document.createElement('div'); 
+  d.textContent = s; 
+  return d.innerHTML; 
+}
+
+function formatDate(ts) { 
+  if (!ts) return ''; 
+  const d = new Date(ts); 
+  return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; 
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = items.length;
+  document.getElementById('statActive').textContent = items.filter(i=>i.status==='progress'||i.status==='review').length;
+  document.getElementById('statDone').textContent = items.filter(i=>i.status==='done').length;
+  document.getElementById('statRejected').textContent = items.filter(i=>i.status==='rejected').length;
+}
+
+function toast(msg) {
+  const t = document.createElement('div'); 
+  t.className = 'toast'; 
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('hide'), 2000);
+  setTimeout(() => t.remove(), 2300);
+}
+
+function exportData() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items));
+  const downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute("href", dataStr);
+  downloadAnchorNode.setAttribute("download", "kanban_backup_" + Date.now() + ".json");
+  document.body.appendChild(downloadAnchorNode);
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+  toast('📥 資料已匯出');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const imported = JSON.parse(evt.target.result);
+      if (Array.isArray(imported)) {
+        items = imported;
+        save();
+        toast('✅ 資料匯入成功！');
+      } else {
+        toast('❌ 檔案格式不符');
+      }
+    } catch(err) {
+      toast('❌ 讀取失敗，檔案格式錯誤');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // Reset input so same file can be imported again if needed
+}
+</script>
+</body>
+</html>
