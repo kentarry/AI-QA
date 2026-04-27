@@ -63,7 +63,7 @@ const server = http.createServer((req, res) => {
   }
 
   // 靜態網頁伺服器：讀取 HTML 檔
-  let filePath = req.url === '/' ? '/antigravity_kanban.html' : req.url;
+  let filePath = req.url === '/' ? '/index.html' : req.url;
   // 安全性處理，防止目錄遍歷
   filePath = path.join(__dirname, path.normalize(filePath).replace(/^(\.\.[\/\\])+/, ''));
   
