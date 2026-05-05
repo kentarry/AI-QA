@@ -143,6 +143,21 @@ font-size:.95rem;display:flex;align-items:center;gap:8px;color:#64dfdf;font-weig
 /* Placeholder */
 .empty-msg{text-align:center;color:rgba(255,255,255,.2);font-size:1rem;padding:50px 10px;user-select:none;font-weight:500}
 
+/* Members View */
+.members-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;width:100%;align-items:start;padding-bottom:20px}
+.member-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:12px;animation:fadeIn .3s ease}
+.member-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px}
+.member-name{font-size:1.25rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.member-name::before{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent3)}
+.member-task-count{background:rgba(255,255,255,.08);padding:4px 10px;border-radius:12px;font-size:.85rem;color:var(--text-dim)}
+.member-tasks{display:flex;flex-direction:column;gap:10px}
+.member-task{background:var(--card);border:1px solid var(--border);padding:12px;border-radius:8px;transition:all .2s;cursor:pointer}
+.member-task:hover{border-color:rgba(255,255,255,.2);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.task-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.task-name{font-weight:600;font-size:1rem;color:var(--text);flex:1;word-break:break-word;line-height:1.4}
+.task-badge{font-size:.75rem;padding:3px 8px;border-radius:6px;font-weight:600;white-space:nowrap;margin-left:8px}
+.task-progress{font-size:.8rem;color:var(--text-dim);display:flex;align-items:center;gap:6px}
+
 /* Toast */
 .toast{position:fixed;bottom:32px;right:32px;background:var(--surface);border:1px solid var(--border);padding:16px 28px;
 border-radius:14px;color:var(--text);font-size:1.05rem;font-weight:600;box-shadow:var(--shadow);z-index:200;
@@ -158,6 +173,7 @@ animation:slideUp .3s ease;transition:opacity .3s;border-left:5px solid var(--ac
     <h1>📋 品檢流程看板</h1>
     <div class="tabs">
       <button class="tab-btn active" id="tab-board" onclick="switchTab('board')">看板視圖</button>
+      <button class="tab-btn" id="tab-members" onclick="switchTab('members')">人員狀態</button>
       <button class="tab-btn" id="tab-archive" onclick="switchTab('archive')">備存庫</button>
     </div>
     <input type="text" id="searchInput" class="search-input" placeholder="搜尋項目或成員…" onkeyup="render()">
@@ -221,6 +237,13 @@ animation:slideUp .3s ease;transition:opacity .3s;border-left:5px solid var(--ac
 </div>
 
 <script>
+const TEAM_MEMBERS = [
+  "張致宇", "周啟堂", "王雯鈺", "宋灝平", "洪全緯", 
+  "蔡曜宇", "林榆昕", "林敏雄", "簡伶珊", "郭冠麟", 
+  "王溶蓁", "李敏瑞", "秦嘉佑", "許昕慈", "江冠錡", 
+  "呂孟軒", "穆道生", "許庭瑊", "彭毓雯"
+];
+
 // 定義所有看板欄位
 const MAIN_COLUMNS = [
   {id:'todo',     label:'尚未製作', color:'#6c63ff'},
@@ -275,6 +298,64 @@ function render() {
   
   board.innerHTML = '';
   
+  if (currentTab === 'members') {
+    const grid = document.createElement('div');
+    grid.className = 'members-grid';
+    
+    TEAM_MEMBERS.forEach(member => {
+      let memberItems = items.filter(i => 
+        i.members && i.members.some(m => m.trim() === member) && i.status !== 'deleted' && i.status !== 'rejected'
+      );
+      
+      if (searchKeyword) {
+        if (!member.toLowerCase().includes(searchKeyword)) {
+          memberItems = memberItems.filter(i => 
+            i.name.toLowerCase().includes(searchKeyword) || 
+            (i.note && i.note.toLowerCase().includes(searchKeyword))
+          );
+          if (memberItems.length === 0) return;
+        }
+      }
+
+      const statusOrder = { 'progress': 1, 'review': 2, 'todo': 3, 'done': 4 };
+      memberItems.sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99));
+
+      const card = document.createElement('div');
+      card.className = 'member-card';
+      
+      let tasksHtml = '';
+      if (memberItems.length === 0) {
+        tasksHtml = '<div class="empty-msg" style="padding:20px 10px;font-size:0.9rem;border:1px dashed rgba(255,255,255,0.1);border-radius:8px">目前無負責項目</div>';
+      } else {
+        tasksHtml = '<div class="member-tasks">' + memberItems.map(item => {
+          const col = MAIN_COLUMNS.find(c => c.id === item.status) || {color:'#999', label:'未知'};
+          return `
+            <div class="member-task" onclick="openModal('${item.id}')">
+              <div class="task-header">
+                <div class="task-name">${esc(item.name)}</div>
+                <div class="task-badge" style="background:${col.color}20;color:${col.color};border:1px solid ${col.color}40">${col.label}</div>
+              </div>
+              <div class="task-progress">進度: ${item.progress || 0}%</div>
+            </div>
+          `;
+        }).join('') + '</div>';
+      }
+
+      card.innerHTML = `
+        <div class="member-header">
+          <div class="member-name">${esc(member)}</div>
+          <div class="member-task-count">${memberItems.length} 項</div>
+        </div>
+        ${tasksHtml}
+      `;
+      grid.appendChild(card);
+    });
+    
+    board.appendChild(grid);
+    updateStats();
+    return;
+  }
+
   const columnsToRender = currentTab === 'board' ? MAIN_COLUMNS : ARCHIVE_COLUMNS;
   columnsToRender.forEach(col => {
     // 過濾出屬於該欄位的卡片
