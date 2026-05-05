@@ -317,7 +317,7 @@ function render() {
         }
       }
 
-      const statusOrder = { 'progress': 1, 'review': 2, 'todo': 3, 'done': 4 };
+      const statusOrder = { 'todo': 1, 'progress': 2, 'review': 3, 'done': 4 };
       memberItems.sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99));
 
       const card = document.createElement('div');
