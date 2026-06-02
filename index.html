@@ -164,6 +164,48 @@ border-radius:14px;color:var(--text);font-size:1.05rem;font-weight:600;box-shado
 animation:slideUp .3s ease;transition:opacity .3s;border-left:5px solid var(--accent)}
 .toast.hide{opacity:0}
 
+/* ====== 增量擴充：AI 工具表格樣式 ====== */
+.aitools-container{padding:24px 32px;width:100%;animation:fadeIn .3s ease}
+.aitools-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:16px}
+.aitools-title{font-size:1.5rem;font-weight:700;display:flex;align-items:center;gap:12px}
+.aitools-title-text{background:linear-gradient(135deg,#6c63ff,#00d2ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.aitools-badge{background:rgba(108,99,255,.15);color:var(--accent);font-size:.85rem;padding:4px 14px;border-radius:16px;font-weight:700;border:1px solid rgba(108,99,255,.3)}
+.aitools-refresh-info{font-size:.85rem;color:var(--text-dim);display:flex;align-items:center;gap:8px}
+.aitools-refresh-dot{width:8px;height:8px;border-radius:50%;background:#0f9b58;animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+.aitools-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;overflow-x:auto}
+.aitools-table{width:100%;border-collapse:collapse;table-layout:auto}
+.aitools-table thead{background:linear-gradient(135deg,rgba(108,99,255,.12),rgba(0,210,255,.08))}
+.aitools-table th{padding:16px 20px;text-align:left;font-weight:700;font-size:.95rem;color:var(--text);border-bottom:1px solid var(--border);white-space:nowrap}
+.aitools-table td{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.04);font-size:.95rem;color:var(--text-dim);vertical-align:top;word-break:break-word}
+.aitools-table tbody tr{transition:all .2s}
+.aitools-table tbody tr:hover{background:rgba(108,99,255,.06)}
+.aitools-table tbody tr:last-child td{border-bottom:none}
+.aitools-tool-name{font-weight:700;color:var(--text);font-size:1.05rem;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.aitools-tool-icon{font-size:1.2rem}
+.aitools-version{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(15,155,88,.2),rgba(0,210,255,.15));padding:5px 14px;border-radius:8px;font-size:.9rem;font-weight:700;color:#64dfdf;border:1px solid rgba(0,210,255,.25);white-space:nowrap;margin-right:8px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.aitools-path{font-family:'Consolas','Courier New',monospace;font-size:.85rem;color:var(--text-dim);background:rgba(255,255,255,.04);padding:8px 12px;border-radius:6px;line-height:1.6;white-space:pre-wrap;border-left:3px solid rgba(108,99,255,.4);word-break:break-all}
+.aitools-desc{line-height:1.6;color:var(--text-dim)}
+.aitools-desc-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text-dim);padding:8px 12px;border-radius:6px;font-size:.9rem;font-family:inherit;outline:none;transition:all .25s;line-height:1.5}
+.aitools-desc-input::placeholder{color:rgba(255,255,255,.2)}
+.aitools-desc-input:focus{border-color:var(--accent);background:rgba(255,255,255,.08);color:var(--text);box-shadow:0 0 0 2px rgba(108,99,255,.15)}
+.aitools-desc-input.saved{border-color:#0f9b58;box-shadow:0 0 8px rgba(15,155,88,.4)}
+.aitools-desc-input.save-error{border-color:var(--accent2);box-shadow:0 0 8px rgba(233,69,96,.3)}
+.aitools-id{font-family:monospace;font-size:.8rem;color:rgba(255,255,255,.3)}
+.aitools-update-time{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;color:var(--text-dim);white-space:nowrap;background:rgba(255,255,255,.04);padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.06)}
+.aitools-update-time .aitools-clock-icon{font-size:.95rem;opacity:.7}
+.aitools-empty{text-align:center;padding:80px 20px;color:rgba(255,255,255,.2)}
+.aitools-empty-icon{font-size:3rem;margin-bottom:16px}
+.aitools-empty-text{font-size:1.1rem;font-weight:500}
+.aitools-loading{text-align:center;padding:60px 20px;color:var(--text-dim)}
+.aitools-loading-spinner{display:inline-block;width:28px;height:28px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.aitools-table th:nth-child(1),.aitools-table td:nth-child(1){width:42px;min-width:42px}
+.aitools-table th:nth-child(2),.aitools-table td:nth-child(2){min-width:130px}
+.aitools-table th:nth-child(3),.aitools-table td:nth-child(3){min-width:100px;padding-right:24px}
+.aitools-table th:nth-child(6),.aitools-table td:nth-child(6){min-width:155px;white-space:nowrap}
+/* ====== 增量擴充結束 ====== */
+
 </style>
 </head>
 <body>
@@ -175,6 +217,7 @@ animation:slideUp .3s ease;transition:opacity .3s;border-left:5px solid var(--ac
       <button class="tab-btn active" id="tab-board" onclick="switchTab('board')">看板視圖</button>
       <button class="tab-btn" id="tab-members" onclick="switchTab('members')">人員狀態</button>
       <button class="tab-btn" id="tab-archive" onclick="switchTab('archive')">備存庫</button>
+      <button class="tab-btn" id="tab-aitools" onclick="switchTab('aitools')">🤖 已上線 AI 工具</button>
     </div>
     <input type="text" id="searchInput" class="search-input" placeholder="搜尋項目或成員…" onkeyup="render()">
   </div>
@@ -237,6 +280,9 @@ animation:slideUp .3s ease;transition:opacity .3s;border-left:5px solid var(--ac
 </div>
 
 <script>
+// ★★★ 請將此處替換為你自己部署的 GAS Web App 網址 ★★★
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw9LPdsBzyKtCcXcubhMxPV-yji1oA-0QE0X8L2VaqfuvwYnaMR66Jag4FELfDEt-VIfg/exec';
+
 const TEAM_MEMBERS = [
   "張致宇", "周啟堂", "王雯鈺", "宋灝平", "洪全緯", 
   "蔡曜宇", "林榆昕", "林敏雄", "簡伶珊", "郭冠麟", 
@@ -271,7 +317,6 @@ function fetchData() {
   const isModalOpen = document.getElementById('modalOverlay').classList.contains('active');
   if (isDragging || isModalOpen) return; // 正在操作卡片或填寫表單時，暫停畫面覆蓋以免中斷操作
   
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbw9LPdsBzyKtCcXcubhMxPV-yji1oA-0QE0X8L2VaqfuvwYnaMR66Jag4FELfDEt-VIfg/exec';
   fetch(GAS_URL)
     .then(r => r.json())
     .then(data => {
@@ -658,7 +703,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Helpers ──
 function save() { 
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbw9LPdsBzyKtCcXcubhMxPV-yji1oA-0QE0X8L2VaqfuvwYnaMR66Jag4FELfDEt-VIfg/exec';
   fetch(GAS_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -702,6 +746,193 @@ function toast(msg) {
   setTimeout(() => t.classList.add('hide'), 2000);
   setTimeout(() => t.remove(), 2300);
 }
+
+// ====================================================================
+// 增量擴充區域：AI 工具即時抓取與渲染
+// 此區域的程式碼完全不影響上方既有看板邏輯
+// ====================================================================
+
+function fetchAiTools() {
+  fetch(GAS_URL + '?type=aitools')
+    .then(r => r.text())
+    .then(text => {
+      console.log('[AI工具] GAS 回傳原始資料：', text.substring(0, 500));
+      try {
+        var data = JSON.parse(text);
+      } catch(e) {
+        console.error('[AI工具] JSON 解析失敗：', e.message);
+        aiToolsLoading = false;
+        return;
+      }
+      console.log('[AI工具] 解析後資料：', Array.isArray(data) ? data.length + ' 筆' : typeof data, data);
+      if (!Array.isArray(data)) {
+        console.warn('[AI工具] GAS 回傳非陣列：', data);
+        aiToolsLoading = false;
+        return;
+      }
+      const newHash = JSON.stringify(data);
+      if (newHash !== aiToolsHashState) {
+        aiToolsData = data;
+        aiToolsHashState = newHash;
+        aiToolsLastUpdate = new Date();
+        aiToolsLoading = false;
+        if (currentTab === 'aitools') render();
+      } else {
+        aiToolsLoading = false;
+      }
+    })
+    .catch(err => { console.error('[AI工具] fetch 失敗：', err); aiToolsLoading = false; });
+}
+
+let aiToolsData = [];
+let aiToolsHashState = '';
+let aiToolsLoading = true;
+let aiToolsLastUpdate = null;
+
+// 將 updateTime 格式化為 Windows 檔案總管風格：YYYY/M/D 上午/下午 HH:mm
+function formatUpdateTime(raw) {
+  if (!raw || raw === '-') return '-';
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return esc(raw);
+  const y = d.getFullYear();
+  const M = d.getMonth() + 1;
+  const day = d.getDate();
+  let h = d.getHours();
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const period = h < 12 ? '上午' : '下午';
+  if (h === 0) h = 12;
+  else if (h > 12) h = h - 12;
+  const hh = String(h).padStart(2, '0');
+  return `${y}/${M}/${day} ${period} ${hh}:${mm}`;
+}
+
+// 啟動 AI 工具即時同步 (每 5 秒抓取一次)
+fetchAiTools();
+setInterval(fetchAiTools, 5000);
+
+function renderAiTools() {
+  const board = document.getElementById('board');
+  const searchKeyword = (document.getElementById('searchInput').value || '').toLowerCase();
+  
+  const container = document.createElement('div');
+  container.className = 'aitools-container';
+  
+  // 過濾搜尋
+  let filtered = aiToolsData;
+  if (searchKeyword) {
+    filtered = aiToolsData.filter(t =>
+      (t.toolName && t.toolName.toLowerCase().includes(searchKeyword)) ||
+      (t.version && t.version.toLowerCase().includes(searchKeyword)) ||
+      (t.pathOutline && t.pathOutline.toLowerCase().includes(searchKeyword)) ||
+      (t.description && t.description.toLowerCase().includes(searchKeyword)) ||
+      (t.updateTime && t.updateTime.toLowerCase().includes(searchKeyword))
+    );
+  }
+  
+  const updateTimeStr = aiToolsLastUpdate
+    ? `${aiToolsLastUpdate.getHours().toString().padStart(2,'0')}:${aiToolsLastUpdate.getMinutes().toString().padStart(2,'0')}:${aiToolsLastUpdate.getSeconds().toString().padStart(2,'0')}`
+    : '同步中…';
+  
+  if (aiToolsLoading && aiToolsData.length === 0) {
+    container.innerHTML = `
+      <div class="aitools-loading">
+        <div class="aitools-loading-spinner"></div>
+        <div>正在從雲端載入 AI 工具資料…</div>
+      </div>
+    `;
+  } else {
+    container.innerHTML = `
+      <div class="aitools-header">
+        <div class="aitools-title">
+          <span class="aitools-title-text">🤖 已上線 AI 工具總覽</span>
+          <span class="aitools-badge">${filtered.length} 項工具</span>
+        </div>
+        <div class="aitools-refresh-info">
+          <span class="aitools-refresh-dot"></span>
+          即時同步中　最後更新：${updateTimeStr}
+        </div>
+      </div>
+      <div class="aitools-table-wrap">
+        ${filtered.length === 0 ? `
+          <div class="aitools-empty">
+            <div class="aitools-empty-icon">🔍</div>
+            <div class="aitools-empty-text">${searchKeyword ? '找不到符合的 AI 工具' : '尚未設定任何 AI 工具'}</div>
+          </div>
+        ` : `
+          <table class="aitools-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>工具名稱</th>
+                <th>版本</th>
+                <th>路徑大綱</th>
+                <th>說明描述</th>
+                <th>修改日期</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.map((tool, idx) => `
+                <tr>
+                  <td><span class="aitools-id">${esc(tool.id || String(idx + 1))}</span></td>
+                  <td><div class="aitools-tool-name"><span class="aitools-tool-icon">⚙️</span>${esc(tool.toolName || '')}</div></td>
+                  <td><span class="aitools-version">🏷️ ${esc(tool.version || '-')}</span></td>
+                  <td><div class="aitools-path">${esc(tool.pathOutline || '-')}</div></td>
+                  <td><input class="aitools-desc-input" data-tool-id="${esc(tool.id)}" value="${esc(tool.description || '')}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter'){this.blur()}"></td>
+                  <td><span class="aitools-update-time"><span class="aitools-clock-icon">🕐</span>${formatUpdateTime(tool.updateTime)}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+  
+  board.appendChild(container);
+}
+
+// 前端 inline-edit 儲存描述至 GAS
+function saveAiToolDesc(inputEl) {
+  const toolId = inputEl.dataset.toolId;
+  const newDesc = inputEl.value.trim();
+  
+  fetch(GAS_URL + '?type=aitools&action=updateDesc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ id: toolId, description: newDesc })
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res && res.success) {
+      inputEl.classList.add('saved');
+      // 同步更新本地資料
+      const tool = aiToolsData.find(t => t.id === toolId);
+      if (tool) tool.description = newDesc;
+      setTimeout(() => inputEl.classList.remove('saved'), 1500);
+    } else {
+      inputEl.classList.add('save-error');
+      setTimeout(() => inputEl.classList.remove('save-error'), 2000);
+    }
+  })
+  .catch(() => {
+    inputEl.classList.add('save-error');
+    setTimeout(() => inputEl.classList.remove('save-error'), 2000);
+  });
+}
+
+// 攔截 render()，在 aitools 頁籤時呼叫專屬渲染
+const _originalRender = render;
+render = function() {
+  if (currentTab === 'aitools') {
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    renderAiTools();
+    updateStats();
+    return;
+  }
+  _originalRender();
+};
+
 </script>
 </body>
 </html>

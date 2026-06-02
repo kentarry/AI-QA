@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // ★★★ GAS Web App 網址 ★★★
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbw9LPdsBzyKtCcXcubhMxPV-yji1oA-0QE0X8L2VaqfuvwYnaMR66Jag4FELfDEt-VIfg/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxO74DWALrlqg5Yjjt8Sdyi075bTyvUFBLWfUiR482-xV-CqnecVQD28j9CX-dtP1bo/exec';
 
 // 動態路徑：掃描上層資料夾（server.js 位於【系統後台】子目錄內）
 const SCAN_PATH = path.resolve(__dirname, '..');
