@@ -158,11 +158,12 @@ font-size:.95rem;display:flex;align-items:center;gap:8px;color:#64dfdf;font-weig
 .task-badge{font-size:.75rem;padding:3px 8px;border-radius:6px;font-weight:600;white-space:nowrap;margin-left:8px}
 .task-progress{font-size:.8rem;color:var(--text-dim);display:flex;align-items:center;gap:6px}
 
-/* Toast */
-.toast{position:fixed;bottom:32px;right:32px;background:var(--surface);border:1px solid var(--border);padding:16px 28px;
-border-radius:14px;color:var(--text);font-size:1.05rem;font-weight:600;box-shadow:var(--shadow);z-index:200;
-animation:slideUp .3s ease;transition:opacity .3s;border-left:5px solid var(--accent)}
-.toast.hide{opacity:0}
+/* Toast — 頂端滑入提示 */
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(26,26,46,.97),rgba(22,33,62,.97));border:1px solid var(--border);padding:16px 32px;
+border-radius:14px;color:var(--text);font-size:1.05rem;font-weight:600;box-shadow:0 12px 48px rgba(0,0,0,.5);z-index:200;
+animation:toastSlideDown .35s cubic-bezier(.22,1,.36,1);transition:opacity .3s,transform .3s;border-left:5px solid var(--accent);backdrop-filter:blur(16px);max-width:90vw;white-space:nowrap}
+.toast.hide{opacity:0;transform:translateX(-50%) translateY(-20px)}
+@keyframes toastSlideDown{from{opacity:0;transform:translateX(-50%) translateY(-30px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 
 /* ====== 增量擴充：AI 工具表格樣式 ====== */
 .aitools-container{padding:24px 32px;width:100%;animation:fadeIn .3s ease}
@@ -181,11 +182,18 @@ animation:slideUp .3s ease;transition:opacity .3s;border-left:5px solid var(--ac
 .aitools-table tbody tr{transition:all .2s}
 .aitools-table tbody tr:hover{background:rgba(108,99,255,.06)}
 .aitools-table tbody tr:last-child td{border-bottom:none}
-.aitools-tool-name{font-weight:700;color:var(--text);font-size:1.05rem;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.aitools-tool-name{font-weight:700;color:var(--text);font-size:1.05rem;display:flex;align-items:center;gap:8px;white-space:nowrap;cursor:pointer;transition:all .2s;padding:4px 8px;border-radius:8px;margin:-4px -8px;text-decoration:none}
+.aitools-tool-name:hover{background:rgba(108,99,255,.12);color:#a5a0ff}
+.aitools-tool-name:active{transform:scale(.97)}
 .aitools-tool-icon{font-size:1.2rem}
 .aitools-version{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(15,155,88,.2),rgba(0,210,255,.15));padding:5px 14px;border-radius:8px;font-size:.9rem;font-weight:700;color:#64dfdf;border:1px solid rgba(0,210,255,.25);white-space:nowrap;margin-right:8px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
-.aitools-path{font-family:'Consolas','Courier New',monospace;font-size:.85rem;color:var(--text-dim);background:rgba(255,255,255,.04);padding:8px 12px;border-radius:6px;line-height:1.6;white-space:pre-wrap;border-left:3px solid rgba(108,99,255,.4);word-break:break-all}
 .aitools-desc{line-height:1.6;color:var(--text-dim)}
+/* 複製圖示欄 */
+.aitools-copy-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;cursor:pointer;transition:all .25s;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)}
+.aitools-copy-btn:hover{background:rgba(108,99,255,.18);border-color:rgba(108,99,255,.35);transform:scale(1.12);box-shadow:0 4px 16px rgba(108,99,255,.2)}
+.aitools-copy-btn:active{transform:scale(.92)}
+.aitools-copy-btn svg{width:18px;height:18px;stroke:var(--text-dim);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.aitools-copy-btn:hover svg{stroke:#a5a0ff}
 .aitools-desc-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text-dim);padding:8px 12px;border-radius:6px;font-size:.9rem;font-family:inherit;outline:none;transition:all .25s;line-height:1.5}
 .aitools-desc-input::placeholder{color:rgba(255,255,255,.2)}
 .aitools-desc-input:focus{border-color:var(--accent);background:rgba(255,255,255,.08);color:var(--text);box-shadow:0 0 0 2px rgba(108,99,255,.15)}
@@ -203,6 +211,8 @@ animation:slideUp .3s ease;transition:opacity .3s;border-left:5px solid var(--ac
 .aitools-table th:nth-child(1),.aitools-table td:nth-child(1){width:42px;min-width:42px}
 .aitools-table th:nth-child(2),.aitools-table td:nth-child(2){min-width:130px}
 .aitools-table th:nth-child(3),.aitools-table td:nth-child(3){min-width:100px;padding-right:24px}
+.aitools-table th:nth-child(4),.aitools-table td:nth-child(4){min-width:220px}
+.aitools-table th:nth-child(5),.aitools-table td:nth-child(5){width:50px;min-width:50px;text-align:center}
 .aitools-table th:nth-child(6),.aitools-table td:nth-child(6){min-width:155px;white-space:nowrap}
 /* ====== 增量擴充結束 ====== */
 
@@ -823,7 +833,6 @@ function renderAiTools() {
     filtered = aiToolsData.filter(t =>
       (t.toolName && t.toolName.toLowerCase().includes(searchKeyword)) ||
       (t.version && t.version.toLowerCase().includes(searchKeyword)) ||
-      (t.pathOutline && t.pathOutline.toLowerCase().includes(searchKeyword)) ||
       (t.description && t.description.toLowerCase().includes(searchKeyword)) ||
       (t.updateTime && t.updateTime.toLowerCase().includes(searchKeyword))
     );
@@ -865,22 +874,24 @@ function renderAiTools() {
                 <th>#</th>
                 <th>工具名稱</th>
                 <th>版本</th>
-                <th>路徑大綱</th>
                 <th>說明描述</th>
+                <th style="text-align:center">複製</th>
                 <th>修改日期</th>
               </tr>
             </thead>
             <tbody>
-              ${filtered.map((tool, idx) => `
+              ${filtered.map((tool, idx) => {
+                const fileUrl = buildFileUrl(tool.pathOutline || '');
+                return `
                 <tr>
                   <td><span class="aitools-id">${esc(tool.id || String(idx + 1))}</span></td>
-                  <td><div class="aitools-tool-name"><span class="aitools-tool-icon">⚙️</span>${esc(tool.toolName || '')}</div></td>
+                  <td><a class="aitools-tool-name" href="${fileUrl}" target="_blank" rel="noopener" title="點擊在新分頁開啟 NAS 目錄"><span class="aitools-tool-icon">⚙️</span>${esc(tool.toolName || '')}</a></td>
                   <td><span class="aitools-version">🏷️ ${esc(tool.version || '-')}</span></td>
-                  <td><div class="aitools-path">${esc(tool.pathOutline || '-')}</div></td>
                   <td><input class="aitools-desc-input" data-tool-id="${esc(tool.id)}" value="${esc(tool.description || '')}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter'){this.blur()}"></td>
+                  <td style="text-align:center"><div class="aitools-copy-btn" onclick="copyToolPath('${esc(tool.id)}')" title="一鍵複製完整路徑"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div></td>
                   <td><span class="aitools-update-time"><span class="aitools-clock-icon">🕐</span>${formatUpdateTime(tool.updateTime)}</span></td>
                 </tr>
-              `).join('')}
+              `}).join('')}
             </tbody>
           </table>
         `}
@@ -917,6 +928,39 @@ function saveAiToolDesc(inputEl) {
   .catch(() => {
     inputEl.classList.add('save-error');
     setTimeout(() => inputEl.classList.remove('save-error'), 2000);
+  });
+}
+
+// ── 將 Windows 路徑轉換為 file:// 協定 URL（純前端新分頁開啟） ──
+function buildFileUrl(windowsPath) {
+  if (!windowsPath || windowsPath === '-') return '#';
+  // 反斜線全部轉正斜線，並補上 file:// 前綴
+  let p = windowsPath.trim().replace(/\\/g, '/');
+  // UNC 路徑 (//192.168.x.x/...) → file://192.168.x.x/...
+  // 本機路徑 (C:/...) → file:///C:/...
+  if (p.startsWith('//')) {
+    return 'file:' + p;           // file://192.168.44.100/ts-qa/...
+  }
+  return 'file:///' + p;          // file:///C:/Users/...
+}
+
+// ── 一鍵複製完整 NAS 路徑功能 ──
+function copyToolPath(toolId) {
+  const tool = aiToolsData.find(t => t.id === toolId);
+  if (!tool) { toast('❌ 找不到對應工具資料'); return; }
+  const fullPath = (tool.pathOutline || '').trim();
+  if (!fullPath || fullPath === '-') { toast('⚠️ 此工具尚未設定 NAS 路徑'); return; }
+  navigator.clipboard.writeText(fullPath).then(() => {
+    toast('✅ 已複製路徑，請在 Windows 檔案總管貼上跳轉');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = fullPath;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('✅ 已複製路徑，請在 Windows 檔案總管貼上跳轉');
   });
 }
 

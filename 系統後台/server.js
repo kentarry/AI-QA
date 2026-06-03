@@ -25,7 +25,7 @@ function writeLog(message) {
 // 每次啟動清空舊的日誌
 try {
   fs.writeFileSync(LOG_FILE, `=== AI Sync Log Start ===\n`, 'utf8');
-} catch (e) {}
+} catch (e) { }
 
 function formatDateTime(date) {
   const y = date.getFullYear();
@@ -60,12 +60,12 @@ function scanTools() {
     writeLog(`Scanning directory: ${SCAN_PATH}`);
     const entries = fs.readdirSync(SCAN_PATH, { withFileTypes: true });
     writeLog(`Found ${entries.length} raw entries in directory.`);
-    
+
     let idx = 0;
 
     entries.forEach(entry => {
       const ext = path.extname(entry.name).toLowerCase();
-      
+
       // 跳過腳本相關檔案
       if (['.js', '.bat', '.vbs', '.cmd', '.ps1', '.json'].includes(ext)) {
         writeLog(`  [Skip] Script/System file: ${entry.name}`);
@@ -81,7 +81,7 @@ function scanTools() {
       const fullPath = path.join(SCAN_PATH, entry.name);
       const isDir = entry.isDirectory();
       const isArchive = !isDir && ARCHIVE_EXTENSIONS.includes(ext);
-      
+
       if (!isDir && !isArchive) {
         writeLog(`  [Skip] Not a directory or support archive: ${entry.name}`);
         return;
