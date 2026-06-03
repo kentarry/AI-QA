@@ -46,8 +46,10 @@ if %errorlevel% equ 0 (
     echo   ✅ 伺服器已在 Windows 背景靜默執行！
     echo ============================================================
     echo.
-    echo   📡 本機網址: http://localhost:8899
+    echo   📡 本機網頁: http://localhost:3939/
+    echo   🌐 區域網路: 請查看 sync_log.txt 取得 LAN IP
     echo   🤖 AI 工具掃描: 每 5 分鐘自動同步
+    echo   📂 點工具名稱: 壓縮檔直接下載 / 資料夾直接開啟
     echo   🔕 CMD 視窗已完全隱藏，不會打擾工作
     echo.
     echo   如需停止服務，請執行「停止背景服務.bat」
