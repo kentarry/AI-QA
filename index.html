@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -896,7 +896,7 @@ function renderAiTools() {
                 return `
                 <tr>
                   <td><span class="aitools-id">${esc(tool.id || String(idx + 1))}</span></td>
-                  <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="點擊複製路徑：${safePathAttr}"><span class="aitools-tool-icon">📂</span>${esc(tool.toolName || '')}</div></td>
+                  <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '點擊下載壓縮檔' : '點擊開啟資料夾'}：${safePathAttr}"><span class="aitools-tool-icon">${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '⬇️' : '📂'}</span>${esc(tool.toolName || '')}</div></td>
                   <td><span class="aitools-version">🏷️ ${esc(tool.version || '-')}</span></td>
                   <td style="font-size:.85rem;color:var(--text-dim);word-break:break-all">${esc(tool.pathOutline || '-')}</td>
                   <td><input class="aitools-desc-input" data-tool-id="${safeIdAttr}" value="${esc(tool.description || '')}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter'){this.blur()}"></td>
@@ -946,14 +946,62 @@ function saveAiToolDesc(inputEl) {
   });
 }
 
-// ── 點擊工具名稱 → 複製路徑到剪貼簿 ──
+// ── 點擊工具名稱 → 資料夾開啟 / 壓縮檔下載 ──
+const ARCHIVE_EXTS = ['.rar', '.7z', '.zip'];
+function getExtension(p) { const m = p.match(/\.[^.\\/]+$/); return m ? m[0].toLowerCase() : ''; }
+
+// 自動偵測 API 伺服器位址
+// 1) 如果網頁是從 server.js 開啟的 (port 3939)，直接使用同網域
+// 2) 如果是 GitHub Pages，嘗試使用設定的內網伺服器
+function getApiBase() {
+  const loc = window.location;
+  // 從 server.js 開啟的 → 直接用同源
+  if (loc.port === '3939' || loc.hostname !== 'kentarry.github.io') {
+    return loc.origin;
+  }
+  // GitHub Pages → 使用內網伺服器 (需手動設定 IP)
+  // ★★★ 請將此 IP 改為實際跑 server.js 那台電腦的 IP ★★★
+  return 'http://192.168.163.18:3939';
+}
+
 function openToolFolder(toolPath) {
   if (!toolPath || toolPath === '-') {
     toast('⚠️ 此工具尚未設定路徑');
     return;
   }
+
+  const ext = getExtension(toolPath);
+  const isArchive = ARCHIVE_EXTS.includes(ext);
+  const apiBase = getApiBase();
+
+  if (isArchive) {
+    // ── 壓縮檔 → 觸發瀏覽器下載 ──
+    toast('⬇️ 正在準備下載…');
+    const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
+    // 使用 window.open 避免 HTTPS→HTTP 的 mixed-content 被擋 (導航不受限)
+    window.open(downloadUrl, '_blank');
+  } else {
+    // ── 資料夾 → 複製路徑到剪貼簿並提示 ──
+    // (瀏覽器安全限制無法從網頁直接開啟他人電腦的資料夾)
+    const apiUrl = `${apiBase}/open-folder?path=${encodeURIComponent(toolPath)}`;
+    fetch(apiUrl)
+      .then(r => r.json())
+      .then(res => {
+        if (res && res.success) {
+          toast('📂 已開啟資料夾');
+        } else {
+          fallbackCopy(toolPath);
+        }
+      })
+      .catch(() => {
+        fallbackCopy(toolPath);
+      });
+  }
+}
+
+function fallbackCopy(toolPath) {
   navigator.clipboard.writeText(toolPath).then(() => {
-    toast('✅ 已複製路徑，請在檔案總管的網址列貼上即可開啟');
+    toast('📋 已複製路徑，請在檔案總管網址列貼上開啟');
   }).catch(() => {
     const ta = document.createElement('textarea');
     ta.value = toolPath;
@@ -962,7 +1010,7 @@ function openToolFolder(toolPath) {
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    toast('✅ 已複製路徑，請在檔案總管的網址列貼上即可開啟');
+    toast('📋 已複製路徑，請在檔案總管網址列貼上開啟');
   });
 }
 

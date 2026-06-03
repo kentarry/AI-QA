@@ -2,6 +2,7 @@ const https = require('https');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
 
 // ★★★ GAS Web App 網址 ★★★
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbw9LPdsBzyKtCcXcubhMxPV-yji1oA-0QE0X8L2VaqfuvwYnaMR66Jag4FELfDEt-VIfg/exec';
@@ -147,3 +148,140 @@ runSync();
 
 // 之後每 5 分鐘同步一次
 setInterval(runSync, SYNC_INTERVAL);
+
+// ====== 中央 Web + API 伺服器 ======
+// 同時提供網頁、開啟資料夾、下載壓縮檔功能
+// 監聽 0.0.0.0 讓整個區域網路的同事都能使用
+const API_PORT = 3939;
+const os = require('os');
+
+const MIME_MAP = {
+  '.rar': 'application/x-rar-compressed',
+  '.7z':  'application/x-7z-compressed',
+  '.zip': 'application/zip'
+};
+
+// 自動取得本機區域網路 IP
+function getLanIP() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) return net.address;
+    }
+  }
+  return 'localhost';
+}
+
+const apiServer = http.createServer((req, res) => {
+  // CORS headers (讓 GitHub Pages 也能呼叫 API)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  const url = new URL(req.url, `http://localhost:${API_PORT}`);
+
+  // ── 首頁：提供 index.html ──
+  if ((url.pathname === '/' || url.pathname === '/index.html') && req.method === 'GET') {
+    const htmlPath = path.join(__dirname, 'index.html');
+    try {
+      const html = fs.readFileSync(htmlPath, 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Error loading index.html: ' + err.message);
+    }
+    return;
+  }
+
+  // ── 開啟資料夾 (僅在伺服器本機有效) ──
+  if (url.pathname === '/open-folder' && req.method === 'GET') {
+    const folderPath = url.searchParams.get('path');
+    if (!folderPath) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Missing path parameter' }));
+      return;
+    }
+
+    const cmd = `explorer "${folderPath.replace(/"/g, '')}"`;
+    writeLog(`📂 Opening folder: ${folderPath}`);
+    exec(cmd, (err) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    });
+    return;
+  }
+
+  // ── 下載壓縮檔 (所有用戶可用) ──
+  if (url.pathname === '/download-file' && req.method === 'GET') {
+    const filePath = url.searchParams.get('path');
+    if (!filePath) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Missing path parameter' }));
+      return;
+    }
+
+    const ext = path.extname(filePath).toLowerCase();
+    if (!ARCHIVE_EXTENSIONS.includes(ext)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Not a supported archive file' }));
+      return;
+    }
+
+    try {
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Path is not a file' }));
+        return;
+      }
+
+      const fileName = path.basename(filePath);
+      const mimeType = MIME_MAP[ext] || 'application/octet-stream';
+
+      writeLog(`⬇️ Downloading file: ${filePath} (${stat.size} bytes)`);
+
+      res.writeHead(200, {
+        'Content-Type': mimeType,
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        'Content-Length': stat.size
+      });
+
+      const stream = fs.createReadStream(filePath);
+      stream.pipe(res);
+      stream.on('error', (err) => {
+        writeLog(`[Error] File stream error: ${err.message}`);
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+      });
+    } catch (err) {
+      writeLog(`[Error] File access error: ${err.message}`);
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'File not found: ' + err.message }));
+    }
+    return;
+  }
+
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Not found' }));
+});
+
+// 監聽 0.0.0.0 讓區域網路內所有電腦都可以連線
+apiServer.listen(API_PORT, '0.0.0.0', () => {
+  const lanIP = getLanIP();
+  writeLog(`🌐 Web + API server running!`);
+  writeLog(`   → 本機存取: http://localhost:${API_PORT}/`);
+  writeLog(`   → 區域網路: http://${lanIP}:${API_PORT}/`);
+  writeLog(`   → 下載 API:  http://${lanIP}:${API_PORT}/download-file?path=<path>`);
+  writeLog(`   → 開資料夾:  http://${lanIP}:${API_PORT}/open-folder?path=<path>`);
+  writeLog(`   📢 請將上方區域網路網址分享給同事使用！`);
+});
+
