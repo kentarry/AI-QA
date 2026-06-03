@@ -59,6 +59,18 @@ function doPost(e) {
       if (e.parameter.action === "updateDesc") {
         return updateAiToolDesc(e);
       }
+      // 新增工具
+      if (e.parameter.action === "addTool") {
+        return addAiTool(e);
+      }
+      // 更新工具（全欄位）
+      if (e.parameter.action === "updateTool") {
+        return updateAiTool(e);
+      }
+      // 刪除工具
+      if (e.parameter.action === "deleteTool") {
+        return deleteAiTool(e);
+      }
       // 批量掃描同步
       return postAiToolsData(e);
     }
@@ -263,6 +275,138 @@ function updateAiToolDesc(e) {
     for (var i = 0; i < data.length; i++) {
       if (data[i][idIdx].toString().trim() === targetId) {
         sheet.getRange(i + 2, descIdx + 1).setValue(newDesc);
+        return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: "id not found" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ====== POST：前端新增單筆 AI 工具 ======
+function addAiTool(e) {
+  try {
+    var sheet = getAiToolsSheet();
+    var payload = JSON.parse(e.postData.contents);
+
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    // 自動產生新 ID = 目前最大 ID + 1
+    var lastRow = sheet.getLastRow();
+    var newId = "1";
+    if (lastRow > 1) {
+      var idColIdx = -1;
+      for (var h = 0; h < headers.length; h++) {
+        if (headers[h] === "id") { idColIdx = h; break; }
+      }
+      if (idColIdx >= 0) {
+        var ids = sheet.getRange(2, idColIdx + 1, lastRow - 1, 1).getValues();
+        var maxId = 0;
+        for (var i = 0; i < ids.length; i++) {
+          var n = parseInt(ids[i][0]);
+          if (!isNaN(n) && n > maxId) maxId = n;
+        }
+        newId = String(maxId + 1);
+      }
+    }
+
+    // 組裝新行
+    var row = [];
+    for (var j = 0; j < headers.length; j++) {
+      var colName = headers[j] ? headers[j].toString().trim() : "";
+      if (colName === "id") {
+        row.push(newId);
+      } else if (colName === "updateTime") {
+        row.push(new Date().toISOString());
+      } else {
+        var val = payload[colName];
+        row.push((val !== undefined && val !== null) ? val.toString() : "");
+      }
+    }
+
+    sheet.appendRow(row);
+    return ContentService.createTextOutput(JSON.stringify({ success: true, id: newId })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ====== POST：前端更新單筆 AI 工具（全欄位） ======
+function updateAiTool(e) {
+  try {
+    var sheet = getAiToolsSheet();
+    var payload = JSON.parse(e.postData.contents);
+    var targetId = payload.id ? payload.id.toString().trim() : "";
+
+    if (!targetId) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: "missing id" })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var lastCol = sheet.getLastColumn();
+    var lastRow = sheet.getLastRow();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    var idIdx = -1;
+    for (var h = 0; h < headers.length; h++) {
+      if (headers[h] === "id") { idIdx = h; break; }
+    }
+    if (idIdx < 0 || lastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: "no data" })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][idIdx].toString().trim() === targetId) {
+        // 逐欄更新（跳過 id）
+        for (var j = 0; j < headers.length; j++) {
+          var colName = headers[j] ? headers[j].toString().trim() : "";
+          if (colName === "id") continue;
+          if (colName === "updateTime") {
+            sheet.getRange(i + 2, j + 1).setValue(new Date().toISOString());
+          } else if (payload.hasOwnProperty(colName)) {
+            sheet.getRange(i + 2, j + 1).setValue(payload[colName] !== undefined && payload[colName] !== null ? payload[colName].toString() : "");
+          }
+        }
+        return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: "id not found" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ====== POST：前端刪除單筆 AI 工具 ======
+function deleteAiTool(e) {
+  try {
+    var sheet = getAiToolsSheet();
+    var payload = JSON.parse(e.postData.contents);
+    var targetId = payload.id ? payload.id.toString().trim() : "";
+
+    if (!targetId) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: "missing id" })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var lastCol = sheet.getLastColumn();
+    var lastRow = sheet.getLastRow();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    var idIdx = -1;
+    for (var h = 0; h < headers.length; h++) {
+      if (headers[h] === "id") { idIdx = h; break; }
+    }
+    if (idIdx < 0 || lastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: "no data" })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][idIdx].toString().trim() === targetId) {
+        sheet.deleteRow(i + 2);
         return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
       }
     }

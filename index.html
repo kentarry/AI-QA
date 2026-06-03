@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -182,7 +182,7 @@ animation:toastSlideDown .35s cubic-bezier(.22,1,.36,1);transition:opacity .3s,t
 .aitools-table tbody tr{transition:all .2s}
 .aitools-table tbody tr:hover{background:rgba(108,99,255,.06)}
 .aitools-table tbody tr:last-child td{border-bottom:none}
-.aitools-tool-name{font-weight:700;color:var(--text);font-size:1.05rem;display:flex;align-items:center;gap:8px;white-space:nowrap;cursor:pointer;transition:all .2s;padding:4px 8px;border-radius:8px;margin:-4px -8px;text-decoration:none}
+.aitools-tool-name{font-weight:700;color:var(--text);font-size:1.05rem;display:flex;align-items:center;gap:8px;white-space:nowrap;cursor:pointer;transition:all .2s;padding:4px 8px;border-radius:8px;margin:-4px -8px;text-decoration:none;user-select:none}
 .aitools-tool-name:hover{background:rgba(108,99,255,.12);color:#a5a0ff}
 .aitools-tool-name:active{transform:scale(.97)}
 .aitools-tool-icon{font-size:1.2rem}
@@ -210,10 +210,19 @@ animation:toastSlideDown .35s cubic-bezier(.22,1,.36,1);transition:opacity .3s,t
 @keyframes spin{to{transform:rotate(360deg)}}
 .aitools-table th:nth-child(1),.aitools-table td:nth-child(1){width:42px;min-width:42px}
 .aitools-table th:nth-child(2),.aitools-table td:nth-child(2){min-width:130px}
-.aitools-table th:nth-child(3),.aitools-table td:nth-child(3){min-width:100px;padding-right:24px}
-.aitools-table th:nth-child(4),.aitools-table td:nth-child(4){min-width:220px}
-.aitools-table th:nth-child(5),.aitools-table td:nth-child(5){width:50px;min-width:50px;text-align:center}
-.aitools-table th:nth-child(6),.aitools-table td:nth-child(6){min-width:155px;white-space:nowrap}
+.aitools-table th:nth-child(3),.aitools-table td:nth-child(3){min-width:80px}
+.aitools-table th:nth-child(4),.aitools-table td:nth-child(4){min-width:180px}
+.aitools-table th:nth-child(5),.aitools-table td:nth-child(5){min-width:150px}
+.aitools-table th:nth-child(6),.aitools-table td:nth-child(6){width:50px;min-width:50px;text-align:center}
+.aitools-table th:nth-child(7),.aitools-table td:nth-child(7){min-width:155px;white-space:nowrap}
+.aitools-table th:nth-child(8),.aitools-table td:nth-child(8){width:80px;min-width:80px;text-align:center}
+/* 操作按鈕 */
+.aitools-row-actions{display:flex;gap:4px;justify-content:center}
+.aitools-action-btn{background:none;border:1px solid rgba(255,255,255,.08);color:var(--text-dim);cursor:pointer;padding:6px;border-radius:8px;font-size:1rem;transition:all .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center}
+.aitools-action-btn:hover{background:rgba(108,99,255,.15);color:var(--text);border-color:rgba(108,99,255,.3)}
+.aitools-action-btn.del:hover{background:rgba(233,69,96,.15);color:var(--accent2);border-color:rgba(233,69,96,.3)}
+.btn-add-tool{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;border:none;padding:8px 20px;border-radius:10px;font-size:.95rem;cursor:pointer;font-weight:600;transition:all .25s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-add-tool:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(108,99,255,.4)}
 /* ====== 增量擴充結束 ====== */
 
 </style>
@@ -762,21 +771,22 @@ function toast(msg) {
 // 此區域的程式碼完全不影響上方既有看板邏輯
 // ====================================================================
 
+let aiToolsData = [];
+let aiToolsHashState = '';
+let aiToolsLoading = true;
+let aiToolsLastUpdate = null;
+
 function fetchAiTools() {
   fetch(GAS_URL + '?type=aitools')
     .then(r => r.text())
     .then(text => {
-      console.log('[AI工具] GAS 回傳原始資料：', text.substring(0, 500));
       try {
         var data = JSON.parse(text);
       } catch(e) {
-        console.error('[AI工具] JSON 解析失敗：', e.message);
         aiToolsLoading = false;
         return;
       }
-      console.log('[AI工具] 解析後資料：', Array.isArray(data) ? data.length + ' 筆' : typeof data, data);
       if (!Array.isArray(data)) {
-        console.warn('[AI工具] GAS 回傳非陣列：', data);
         aiToolsLoading = false;
         return;
       }
@@ -791,15 +801,10 @@ function fetchAiTools() {
         aiToolsLoading = false;
       }
     })
-    .catch(err => { console.error('[AI工具] fetch 失敗：', err); aiToolsLoading = false; });
+    .catch(() => { aiToolsLoading = false; });
 }
 
-let aiToolsData = [];
-let aiToolsHashState = '';
-let aiToolsLoading = true;
-let aiToolsLastUpdate = null;
-
-// 將 updateTime 格式化為 Windows 檔案總管風格：YYYY/M/D 上午/下午 HH:mm
+// 將 updateTime 格式化
 function formatUpdateTime(raw) {
   if (!raw || raw === '-') return '-';
   const d = new Date(raw);
@@ -827,13 +832,13 @@ function renderAiTools() {
   const container = document.createElement('div');
   container.className = 'aitools-container';
   
-  // 過濾搜尋
   let filtered = aiToolsData;
   if (searchKeyword) {
     filtered = aiToolsData.filter(t =>
       (t.toolName && t.toolName.toLowerCase().includes(searchKeyword)) ||
       (t.version && t.version.toLowerCase().includes(searchKeyword)) ||
       (t.description && t.description.toLowerCase().includes(searchKeyword)) ||
+      (t.pathOutline && t.pathOutline.toLowerCase().includes(searchKeyword)) ||
       (t.updateTime && t.updateTime.toLowerCase().includes(searchKeyword))
     );
   }
@@ -856,16 +861,19 @@ function renderAiTools() {
           <span class="aitools-title-text">🤖 已上線 AI 工具總覽</span>
           <span class="aitools-badge">${filtered.length} 項工具</span>
         </div>
-        <div class="aitools-refresh-info">
-          <span class="aitools-refresh-dot"></span>
-          即時同步中　最後更新：${updateTimeStr}
+        <div style="display:flex;align-items:center;gap:16px">
+          <div class="aitools-refresh-info">
+            <span class="aitools-refresh-dot"></span>
+            即時同步中　最後更新：${updateTimeStr}
+          </div>
+          <button class="btn-add-tool" onclick="openToolModal()">＋ 新增工具</button>
         </div>
       </div>
       <div class="aitools-table-wrap">
         ${filtered.length === 0 ? `
           <div class="aitools-empty">
             <div class="aitools-empty-icon">🔍</div>
-            <div class="aitools-empty-text">${searchKeyword ? '找不到符合的 AI 工具' : '尚未設定任何 AI 工具'}</div>
+            <div class="aitools-empty-text">${searchKeyword ? '找不到符合的 AI 工具' : '尚未新增任何 AI 工具，點擊右上角「＋ 新增工具」開始'}</div>
           </div>
         ` : `
           <table class="aitools-table">
@@ -874,22 +882,30 @@ function renderAiTools() {
                 <th>#</th>
                 <th>工具名稱</th>
                 <th>版本</th>
+                <th>資料夾路徑</th>
                 <th>說明描述</th>
                 <th style="text-align:center">複製</th>
                 <th>修改日期</th>
+                <th style="text-align:center">操作</th>
               </tr>
             </thead>
             <tbody>
               ${filtered.map((tool, idx) => {
-                const fileUrl = buildFileUrl(tool.pathOutline || '');
+                const safePathAttr = (tool.pathOutline || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+                const safeIdAttr = (tool.id || '').replace(/"/g,'&quot;');
                 return `
                 <tr>
                   <td><span class="aitools-id">${esc(tool.id || String(idx + 1))}</span></td>
-                  <td><a class="aitools-tool-name" href="${fileUrl}" target="_blank" rel="noopener" title="點擊在新分頁開啟 NAS 目錄"><span class="aitools-tool-icon">⚙️</span>${esc(tool.toolName || '')}</a></td>
+                  <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="點擊複製路徑：${safePathAttr}"><span class="aitools-tool-icon">📂</span>${esc(tool.toolName || '')}</div></td>
                   <td><span class="aitools-version">🏷️ ${esc(tool.version || '-')}</span></td>
-                  <td><input class="aitools-desc-input" data-tool-id="${esc(tool.id)}" value="${esc(tool.description || '')}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter'){this.blur()}"></td>
-                  <td style="text-align:center"><div class="aitools-copy-btn" onclick="copyToolPath('${esc(tool.id)}')" title="一鍵複製完整路徑"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div></td>
+                  <td style="font-size:.85rem;color:var(--text-dim);word-break:break-all">${esc(tool.pathOutline || '-')}</td>
+                  <td><input class="aitools-desc-input" data-tool-id="${safeIdAttr}" value="${esc(tool.description || '')}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter'){this.blur()}"></td>
+                  <td style="text-align:center"><div class="aitools-copy-btn" onclick="copyToolPath('${safeIdAttr}')" title="一鍵複製完整路徑"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div></td>
                   <td><span class="aitools-update-time"><span class="aitools-clock-icon">🕐</span>${formatUpdateTime(tool.updateTime)}</span></td>
+                  <td><div class="aitools-row-actions">
+                    <button class="aitools-action-btn" onclick="openToolModal('${safeIdAttr}')" title="編輯">✏️</button>
+                    <button class="aitools-action-btn del" onclick="confirmDeleteTool('${safeIdAttr}')" title="刪除">🗑️</button>
+                  </div></td>
                 </tr>
               `}).join('')}
             </tbody>
@@ -916,7 +932,6 @@ function saveAiToolDesc(inputEl) {
   .then(res => {
     if (res && res.success) {
       inputEl.classList.add('saved');
-      // 同步更新本地資料
       const tool = aiToolsData.find(t => t.id === toolId);
       if (tool) tool.description = newDesc;
       setTimeout(() => inputEl.classList.remove('saved'), 1500);
@@ -931,25 +946,32 @@ function saveAiToolDesc(inputEl) {
   });
 }
 
-// ── 將 Windows 路徑轉換為 file:// 協定 URL（純前端新分頁開啟） ──
-function buildFileUrl(windowsPath) {
-  if (!windowsPath || windowsPath === '-') return '#';
-  // 反斜線全部轉正斜線，並補上 file:// 前綴
-  let p = windowsPath.trim().replace(/\\/g, '/');
-  // UNC 路徑 (//192.168.x.x/...) → file://192.168.x.x/...
-  // 本機路徑 (C:/...) → file:///C:/...
-  if (p.startsWith('//')) {
-    return 'file:' + p;           // file://192.168.44.100/ts-qa/...
+// ── 點擊工具名稱 → 複製路徑到剪貼簿 ──
+function openToolFolder(toolPath) {
+  if (!toolPath || toolPath === '-') {
+    toast('⚠️ 此工具尚未設定路徑');
+    return;
   }
-  return 'file:///' + p;          // file:///C:/Users/...
+  navigator.clipboard.writeText(toolPath).then(() => {
+    toast('✅ 已複製路徑，請在檔案總管的網址列貼上即可開啟');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = toolPath;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('✅ 已複製路徑，請在檔案總管的網址列貼上即可開啟');
+  });
 }
 
-// ── 一鍵複製完整 NAS 路徑功能 ──
+// ── 一鍵複製完整路徑 ──
 function copyToolPath(toolId) {
   const tool = aiToolsData.find(t => t.id === toolId);
   if (!tool) { toast('❌ 找不到對應工具資料'); return; }
   const fullPath = (tool.pathOutline || '').trim();
-  if (!fullPath || fullPath === '-') { toast('⚠️ 此工具尚未設定 NAS 路徑'); return; }
+  if (!fullPath || fullPath === '-') { toast('⚠️ 此工具尚未設定路徑'); return; }
   navigator.clipboard.writeText(fullPath).then(() => {
     toast('✅ 已複製路徑，請在 Windows 檔案總管貼上跳轉');
   }).catch(() => {
@@ -963,6 +985,183 @@ function copyToolPath(toolId) {
     toast('✅ 已複製路徑，請在 Windows 檔案總管貼上跳轉');
   });
 }
+
+// ====== AI 工具 Modal：新增 / 編輯 ======
+let editingToolId = null;
+
+function openToolModal(id) {
+  editingToolId = id || null;
+  const overlay = document.getElementById('modalOverlay');
+  overlay.classList.add('active');
+  
+  const modal = overlay.querySelector('.modal');
+  
+  if (id) {
+    const tool = aiToolsData.find(t => t.id === id);
+    if (!tool) { toast('❌ 找不到工具資料'); overlay.classList.remove('active'); return; }
+    document.getElementById('modalTitle').textContent = '編輯 AI 工具';
+    document.getElementById('inputName').value = tool.toolName || '';
+    ensureToolFields();
+    document.getElementById('inputToolVersion').value = tool.version || '';
+    document.getElementById('inputToolPath').value = tool.pathOutline || '';
+    document.getElementById('inputNote').value = tool.description || '';
+    toggleToolModalFields(true);
+    document.getElementById('btnDelete').style.display = 'block';
+  } else {
+    document.getElementById('modalTitle').textContent = '新增 AI 工具';
+    document.getElementById('inputName').value = '';
+    ensureToolFields();
+    document.getElementById('inputToolVersion').value = '';
+    document.getElementById('inputToolPath').value = '';
+    document.getElementById('inputNote').value = '';
+    toggleToolModalFields(true);
+    document.getElementById('btnDelete').style.display = 'none';
+  }
+  
+  const saveBtn = modal.querySelector('.btn-save');
+  saveBtn.onclick = saveToolItem;
+  const delBtn = document.getElementById('btnDelete');
+  delBtn.onclick = () => { if (editingToolId) confirmDeleteTool(editingToolId); };
+  
+  setTimeout(() => document.getElementById('inputName').focus(), 100);
+}
+
+function ensureToolFields() {
+  if (!document.getElementById('toolFieldsGroup')) {
+    const container = document.createElement('div');
+    container.id = 'toolFieldsGroup';
+    container.innerHTML = `
+      <div class="form-row" style="margin-top:18px">
+        <div class="form-group">
+          <label>版本號</label>
+          <input type="text" id="inputToolVersion" placeholder="例如：v1.0.0">
+        </div>
+        <div class="form-group">
+          <label>資料夾路徑</label>
+          <input type="text" id="inputToolPath" placeholder="例如：\\\\192.168.44.100\\ts-qa\\...">
+        </div>
+      </div>
+    `;
+    const noteGroup = document.getElementById('inputNote').closest('.form-group');
+    noteGroup.parentNode.insertBefore(container, noteGroup);
+  }
+}
+
+function toggleToolModalFields(isToolMode) {
+  const statusRow = document.getElementById('inputStatus')?.closest('.form-row');
+  const membersGroup = document.getElementById('membersBox')?.closest('.form-group');
+  const toolFields = document.getElementById('toolFieldsGroup');
+  
+  if (statusRow) statusRow.style.display = isToolMode ? 'none' : '';
+  if (membersGroup) membersGroup.style.display = isToolMode ? 'none' : '';
+  if (toolFields) toolFields.style.display = isToolMode ? '' : 'none';
+  
+  const noteLabel = document.getElementById('inputNote')?.closest('.form-group')?.querySelector('label');
+  if (noteLabel) noteLabel.textContent = isToolMode ? '工具說明' : '備註說明';
+}
+
+function saveToolItem() {
+  const name = document.getElementById('inputName').value.trim();
+  if (!name) {
+    document.getElementById('inputName').style.borderColor = 'var(--accent2)';
+    document.getElementById('inputName').focus();
+    return;
+  }
+  
+  const version = document.getElementById('inputToolVersion').value.trim() || 'v1.0.0';
+  const pathOutline = document.getElementById('inputToolPath').value.trim();
+  const description = document.getElementById('inputNote').value.trim();
+  
+  const payload = { toolName: name, version, pathOutline, description };
+  
+  if (editingToolId) {
+    payload.id = editingToolId;
+    fetch(GAS_URL + '?type=aitools&action=updateTool', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res && res.success) {
+        toast('✅ 工具已更新');
+        aiToolsHashState = '';
+        fetchAiTools();
+      } else {
+        toast('❌ 更新失敗：' + (res?.error || '未知錯誤'));
+      }
+    })
+    .catch(() => toast('❌ 網路錯誤，請稍後再試'));
+  } else {
+    fetch(GAS_URL + '?type=aitools&action=addTool', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res && res.success) {
+        toast('✅ 工具已新增');
+        aiToolsHashState = '';
+        fetchAiTools();
+      } else {
+        toast('❌ 新增失敗：' + (res?.error || '未知錯誤'));
+      }
+    })
+    .catch(() => toast('❌ 網路錯誤，請稍後再試'));
+  }
+  
+  closeToolModal();
+}
+
+function confirmDeleteTool(id) {
+  const tool = aiToolsData.find(t => t.id === id);
+  if (!tool) return;
+  if (!confirm(`確定要刪除「${tool.toolName}」嗎？`)) return;
+  
+  fetch(GAS_URL + '?type=aitools&action=deleteTool', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ id })
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res && res.success) {
+      toast('🗑️ 工具已刪除');
+      closeToolModal();
+      aiToolsHashState = '';
+      fetchAiTools();
+    } else {
+      toast('❌ 刪除失敗：' + (res?.error || '未知錯誤'));
+    }
+  })
+  .catch(() => toast('❌ 網路錯誤，請稍後再試'));
+}
+
+function closeToolModal() {
+  const overlay = document.getElementById('modalOverlay');
+  overlay.classList.remove('active');
+  editingToolId = null;
+  const modal = overlay.querySelector('.modal');
+  const saveBtn = modal.querySelector('.btn-save');
+  saveBtn.onclick = saveItem;
+  const delBtn = document.getElementById('btnDelete');
+  delBtn.onclick = deleteItem;
+  toggleToolModalFields(false);
+}
+
+// 放回原本看板的 openModal / closeModal，讓它們開關時還原欄位
+const _origOpenModal = openModal;
+openModal = function(id) {
+  toggleToolModalFields(false);
+  _origOpenModal(id);
+};
+
+const _origCloseModal = closeModal;
+closeModal = function() {
+  toggleToolModalFields(false);
+  _origCloseModal();
+};
 
 // 攔截 render()，在 aitools 頁籤時呼叫專屬渲染
 const _originalRender = render;

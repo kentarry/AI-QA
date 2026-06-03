@@ -4,12 +4,15 @@ const fs = require('fs');
 const path = require('path');
 
 // ★★★ GAS Web App 網址 ★★★
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxO74DWALrlqg5Yjjt8Sdyi075bTyvUFBLWfUiR482-xV-CqnecVQD28j9CX-dtP1bo/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw9LPdsBzyKtCcXcubhMxPV-yji1oA-0QE0X8L2VaqfuvwYnaMR66Jag4FELfDEt-VIfg/exec';
 
-// 動態路徑：掃描上層資料夾（server.js 位於【系統後台】子目錄內）
+// 動態路徑：掃描上層資料夾
 const SCAN_PATH = path.resolve(__dirname, '..');
 const ARCHIVE_EXTENSIONS = ['.rar', '.7z', '.zip'];
 const LOG_FILE = path.join(__dirname, 'sync_log.txt');
+
+// 同步週期：每 5 分鐘
+const SYNC_INTERVAL = 5 * 60 * 1000;
 
 function writeLog(message) {
   const time = new Date().toLocaleString();
@@ -17,15 +20,11 @@ function writeLog(message) {
   console.log(message);
   try {
     fs.appendFileSync(LOG_FILE, line, 'utf8');
-  } catch (e) {
-    // Ignore log write errors
-  }
+  } catch (e) { }
 }
 
-// 每次啟動清空舊的日誌
-try {
-  fs.writeFileSync(LOG_FILE, `=== AI Sync Log Start ===\n`, 'utf8');
-} catch (e) { }
+// 每次啟動清空舊日誌
+try { fs.writeFileSync(LOG_FILE, `=== AI Sync Log Start ===\n`, 'utf8'); } catch (e) { }
 
 function formatDateTime(date) {
   const y = date.getFullYear();
@@ -62,30 +61,18 @@ function scanTools() {
     writeLog(`Found ${entries.length} raw entries in directory.`);
 
     let idx = 0;
-
     entries.forEach(entry => {
       const ext = path.extname(entry.name).toLowerCase();
 
-      // 跳過腳本相關檔案
-      if (['.js', '.bat', '.vbs', '.cmd', '.ps1', '.json'].includes(ext)) {
-        writeLog(`  [Skip] Script/System file: ${entry.name}`);
-        return;
-      }
-
-      // 排除「系統後台」資料夾本身
-      if (entry.name === '系統後台') {
-        writeLog(`  [Skip] Backstage folder skipped: ${entry.name}`);
-        return;
-      }
+      if (['.js', '.bat', '.vbs', '.cmd', '.ps1', '.json', '.html', '.txt', '.md'].includes(ext)) return;
+      if (entry.name.startsWith('.')) return;
+      if (entry.name === '系統後台') return;
 
       const fullPath = path.join(SCAN_PATH, entry.name);
       const isDir = entry.isDirectory();
       const isArchive = !isDir && ARCHIVE_EXTENSIONS.includes(ext);
 
-      if (!isDir && !isArchive) {
-        writeLog(`  [Skip] Not a directory or support archive: ${entry.name}`);
-        return;
-      }
+      if (!isDir && !isArchive) return;
 
       idx++;
       const { toolName, version } = parseToolNameAndVersion(entry.name, !isDir);
@@ -94,11 +81,7 @@ function scanTools() {
       try { updateTime = formatDateTime(fs.statSync(fullPath).mtime); }
       catch (e) { updateTime = '-'; }
 
-      const description = '';
-
-      writeLog(`  [Match] Tool Name: "${toolName}", Version: "${version}", Path: "${fullPath}", Modified: ${updateTime}`);
-
-      tools.push({ id: String(idx), toolName, version, pathOutline: fullPath, description, updateTime });
+      tools.push({ id: String(idx), toolName, version, pathOutline: fullPath, description: '', updateTime });
     });
 
     writeLog(`Total matching tools found: ${tools.length}`);
@@ -137,15 +120,14 @@ function syncToGAS(tools) {
   });
 }
 
-async function main() {
-  writeLog('🤖 AI Tools Sync Service started.');
+// ── 單次同步 ──
+async function runSync() {
+  writeLog('🤖 Running AI Tools sync...');
   const tools = scanTools();
-
   if (tools.length === 0) {
-    writeLog('⏭️ No tools found to sync. Exiting.');
-    process.exit(0);
+    writeLog('⏭️ No tools found to sync.');
+    return;
   }
-
   try {
     writeLog(`Sending payload of ${tools.length} items to GAS...`);
     const result = await syncToGAS(tools);
@@ -153,9 +135,15 @@ async function main() {
   } catch (err) {
     writeLog(`Sync Error: ${err.message}`);
   }
-
-  writeLog('🤖 Sync finished. Exiting.');
-  process.exit(0);
 }
 
-main();
+// ── 持續背景同步 ──
+writeLog('🚀 AI Tools Auto-Sync Service started (background mode).');
+writeLog(`📂 Scan path: ${SCAN_PATH}`);
+writeLog(`🔄 Sync interval: ${SYNC_INTERVAL / 1000} seconds`);
+
+// 首次立即同步
+runSync();
+
+// 之後每 5 分鐘同步一次
+setInterval(runSync, SYNC_INTERVAL);
