@@ -6,10 +6,8 @@ const path = require('path');
 // ★★★ GAS Web App 網址 ★★★
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbw9LPdsBzyKtCcXcubhMxPV-yji1oA-0QE0X8L2VaqfuvwYnaMR66Jag4FELfDEt-VIfg/exec';
 
-// 動態路徑：掃描上層資料夾
-const SCAN_PATH = path.resolve(__dirname, '..');
-// ★★★ 網路磁碟機路徑（同仁點擊時顯示的路徑）★★★
-const NETWORK_BASE_PATH = '\\\\192.168.44.100\\ts-qa\\品檢組\\0_GT測試交接\\AI工具';
+// ★★★ 掃描網路磁碟機上的 AI 工具資料夾 ★★★
+const SCAN_PATH = '\\\\192.168.44.100\\ts-qa\\品檢組\\0_GT測試交接\\AI工具';
 const ARCHIVE_EXTENSIONS = ['.rar', '.7z', '.zip'];
 const LOG_FILE = path.join(__dirname, 'sync_log.txt');
 
@@ -83,8 +81,7 @@ function scanTools() {
       try { updateTime = formatDateTime(fs.statSync(fullPath).mtime); }
       catch (e) { updateTime = '-'; }
 
-      const networkPath = NETWORK_BASE_PATH + '\\' + entry.name;
-      tools.push({ id: String(idx), toolName, version, pathOutline: networkPath, description: '', updateTime });
+      tools.push({ id: String(idx), toolName, version, pathOutline: fullPath, description: '', updateTime });
     });
 
     writeLog(`Total matching tools found: ${tools.length}`);
