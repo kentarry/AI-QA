@@ -553,119 +553,7 @@ const apiServer = http.createServer((req, res) => {
     return;
   }
 
-  // ── 中介下載網頁 (為了解決安全 HTTPS 網頁對 HTTP 進行直接下載時被 Mixed Content 阻擋的問題) ──
-  if (url.pathname === '/download-page' && req.method === 'GET') {
-    const filePath = url.searchParams.get('path');
-    if (!filePath) {
-      res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end('<h3>錯誤: 缺少 path 參數</h3>');
-      return;
-    }
-
-    const esc = (txt) => {
-      if (!txt) return '';
-      return txt.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    };
-
-    const fileName = path.basename(filePath);
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>正在下載檔案 - ${esc(fileName)}</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body {
-            background: #0f0f12;
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-          }
-          .card {
-            text-align: center;
-            padding: 40px 30px;
-            border-radius: 16px;
-            background: #1e1e24;
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-            max-width: 480px;
-            width: 90%;
-            box-sizing: border-box;
-          }
-          .icon {
-            font-size: 3.5rem;
-            margin-bottom: 20px;
-            animation: bounce 2s infinite;
-          }
-          h3 {
-            margin: 0 0 12px 0;
-            font-size: 1.4rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #6c63ff, #00d2ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-          }
-          .file-name {
-            margin: 0 0 24px 0;
-            color: #94a3b8;
-            font-size: 0.95rem;
-            word-break: break-all;
-            background: rgba(0,0,0,0.2);
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.04);
-            font-family: monospace;
-          }
-          .tip {
-            margin: 0;
-            color: rgba(255,255,255,0.4);
-            font-size: 0.85rem;
-          }
-          .tip a {
-            color: #a5a0ff;
-            text-decoration: none;
-            font-weight: 600;
-          }
-          .tip a:hover {
-            text-decoration: underline;
-          }
-          @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div class="icon">⬇️</div>
-          <h3>正在下載您的檔案</h3>
-          <div class="file-name">${esc(fileName)}</div>
-          <p class="tip">已為您觸發下載，本視窗將自動關閉。<br>若下載沒有開始，請 <a href="/download-file?path=${encodeURIComponent(filePath)}">點擊此處手動下載</a></p>
-        </div>
-        <script>
-          // 透過同源導航觸發下載，避開 HTTPS 網域對 HTTP 下載的 Mixed Content 阻擋政策
-          setTimeout(() => {
-            window.location.href = "/download-file?path=" + encodeURIComponent("${filePath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}");
-          }, 300);
-          
-          // 下載觸發後，2.5秒自動關閉本分頁
-          setTimeout(() => {
-            window.close();
-          }, 2500);
-        </script>
-      </body>
-      </html>
-    `);
-    return;
-  }
-
-  // ── 下載壓縮檔 或 整個資料夾打包 (所有用戶可用) ──
+  // ── 下載壓縮檔 (所有用戶可用) ──
   if (url.pathname === '/download-file' && req.method === 'GET') {
     const filePath = url.searchParams.get('path');
     if (!filePath) {
@@ -674,91 +562,45 @@ const apiServer = http.createServer((req, res) => {
       return;
     }
 
+    const ext = path.extname(filePath).toLowerCase();
+    if (!ARCHIVE_EXTENSIONS.includes(ext)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Not a supported archive file' }));
+      return;
+    }
+
     try {
       const stat = fs.statSync(filePath);
-      const fileName = path.basename(filePath);
-
-      if (stat.isFile()) {
-        // ── 壓縮檔下載 ──
-        const ext = path.extname(filePath).toLowerCase();
-        if (!ARCHIVE_EXTENSIONS.includes(ext)) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, error: 'Not a supported archive file' }));
-          return;
-        }
-
-        const mimeType = MIME_MAP[ext] || 'application/octet-stream';
-        writeLog(`⬇️ Downloading file: ${filePath} (${stat.size} bytes)`);
-
-        res.writeHead(200, {
-          'Content-Type': mimeType,
-          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-          'Content-Length': stat.size
-        });
-
-        const stream = fs.createReadStream(filePath);
-        stream.pipe(res);
-        stream.on('error', (err) => {
-          writeLog(`[Error] File stream error: ${err.message}`);
-          if (!res.headersSent) {
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: false, error: err.message }));
-          }
-        });
-      } else if (stat.isDirectory()) {
-        // ── 資料夾即時壓縮成 ZIP 下載 ──
-        const tempZipName = `${fileName}.zip`;
-        const tempZipPath = path.join(__dirname, `temp_download_${Date.now()}.zip`);
-        
-        writeLog(`🤐 Zipping folder for download: ${filePath} -> ${tempZipPath}`);
-        
-        const psPath = filePath.replace(/'/g, "''");
-        const psDest = tempZipPath.replace(/'/g, "''");
-        const cmd = `powershell -Command "Compress-Archive -Path '${psPath}' -DestinationPath '${psDest}' -Force"`;
-        
-        exec(cmd, (err) => {
-          if (err) {
-            writeLog(`[Error] Zipping failed: ${err.message}`);
-            res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
-            res.end(`<h3>壓縮資料夾失敗: ${err.message}</h3>`);
-            return;
-          }
-
-          try {
-            const zipStat = fs.statSync(tempZipPath);
-            writeLog(`⬇️ Downloading zipped folder: ${tempZipName} (${zipStat.size} bytes)`);
-
-            res.writeHead(200, {
-              'Content-Type': 'application/zip',
-              'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(tempZipName)}`,
-              'Content-Length': zipStat.size
-            });
-
-            const stream = fs.createReadStream(tempZipPath);
-            stream.pipe(res);
-            
-            // 下載完成後刪除暫存 zip 檔
-            res.on('finish', () => {
-              fs.unlink(tempZipPath, (unlinkErr) => {
-                if (unlinkErr) writeLog(`[Warning] Failed to delete temp zip: ${unlinkErr.message}`);
-              });
-            });
-            
-            stream.on('error', (streamErr) => {
-              writeLog(`[Error] Zip stream error: ${streamErr.message}`);
-              fs.unlink(tempZipPath, () => {});
-            });
-          } catch (statErr) {
-            writeLog(`[Error] Zip file access error: ${statErr.message}`);
-            res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
-            res.end(`<h3>檔案存取失敗: ${statErr.message}</h3>`);
-          }
-        });
+      if (!stat.isFile()) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Path is not a file' }));
+        return;
       }
+
+      const fileName = path.basename(filePath);
+      const mimeType = MIME_MAP[ext] || 'application/octet-stream';
+
+      writeLog(`⬇️ Downloading file: ${filePath} (${stat.size} bytes)`);
+
+      res.writeHead(200, {
+        'Content-Type': mimeType,
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        'Content-Length': stat.size
+      });
+
+      const stream = fs.createReadStream(filePath);
+      stream.pipe(res);
+      stream.on('error', (err) => {
+        writeLog(`[Error] File stream error: ${err.message}`);
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+      });
     } catch (err) {
-      writeLog(`[Error] Path access error: ${err.message}`);
+      writeLog(`[Error] File access error: ${err.message}`);
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'Path not found: ' + err.message }));
+      res.end(JSON.stringify({ success: false, error: 'File not found: ' + err.message }));
     }
     return;
   }

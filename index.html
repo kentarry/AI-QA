@@ -894,7 +894,7 @@ function renderAiTools() {
                 return `
                 <tr>
                   <td><span class="aitools-id">${esc(tool.id || String(idx + 1))}</span></td>
-                  <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '點擊下載壓縮檔' : '點擊打包下載資料夾(路徑已複製)'}：${safePathAttr}"><span class="aitools-tool-icon">${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '⬇️' : '📂'}</span>${esc(tool.toolName || '')}</div></td>
+                  <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '點擊下載壓縮檔' : '網頁開啟資料夾(路徑已複製)'}：${safePathAttr}"><span class="aitools-tool-icon">${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '⬇️' : '📂'}</span>${esc(tool.toolName || '')}</div></td>
                   <td><span class="aitools-version">🏷️ ${esc(tool.version || '-')}</span></td>
                   <td><textarea class="aitools-desc-input" data-tool-id="${safeIdAttr}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.blur();}" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${esc(tool.description || '')}</textarea></td>
                   <td style="text-align:center"><div class="aitools-copy-btn" onclick="copyToolPath('${safeIdAttr}')" title="一鍵複製完整路徑"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div></td>
@@ -973,19 +973,26 @@ function openToolFolder(toolPath) {
     return;
   }
 
+  const ext = getExtension(toolPath);
+  const isArchive = ARCHIVE_EXTS.includes(ext);
   const apiBase = getApiBase();
 
-  // 如果是 HTTPS 協定 (如 GitHub Pages)，為了避免瀏覽器安全政策 (Mixed Content) 攔截 HTTP 下載，提示使用者改用區域網路網頁
-  if (window.location.protocol === 'https:') {
-    alert(`⚠️ 【下載提示】\n\n由於瀏覽器安全政策限制「安全網頁 (HTTPS) 無法下載非安全伺服器 (HTTP)」的檔案，在 GitHub Pages 上直接點擊會被阻擋。\n\n請改用「區域網路網址」來開啟看板，即可享受「點擊直接下載/打包資料夾」功能：\n${apiBase}/\n\n(已自動為您複製此區域網路網址，請直接在網址列貼上並 Enter 進入)`);
-    silentCopy(`${apiBase}/`);
-  } else {
-    // 本地 HTTP 環境 (如區域網路 IP 開啟的網頁)，直接在當前分頁背景下載，100% 成功且完全不另開新網頁！
-    toast('⬇️ 正在打包下載中，請稍候…');
+  if (isArchive) {
+    // ── 壓縮檔 → 直接觸發瀏覽器下載（不開新分頁）──
+    toast('⬇️ 正在下載壓縮檔…');
     const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
-    window.location.href = downloadUrl;
-    
-    // 在背景自動複製路徑，方便需要的使用者貼上至本機檔案總管
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = toolPath.split(/[\\/]/).pop() || 'download';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } else {
+    // ── 資料夾 → 直接在網頁開啟，並複製路徑備用 ──
+    toast('🌐 正在以網頁開啟資料夾，路徑已複製');
+    const viewUrl = `${apiBase}/view-folder?path=${encodeURIComponent(toolPath)}`;
+    window.open(viewUrl, '_blank');
     silentCopy(toolPath);
   }
 }

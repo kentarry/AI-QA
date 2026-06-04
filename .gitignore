@@ -1,3 +1,6 @@
 kanban_data.7z
 sync_log.txt
 **/sync_log.txt
+temp_download_*.zip
+.git.7z
+add_firewall.bat
