@@ -981,13 +981,29 @@ function openToolFolder(toolPath) {
     // ── 壓縮檔 → 直接觸發瀏覽器下載（不開新分頁）──
     toast('⬇️ 正在下載壓縮檔…');
     const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = toolPath.split(/[\\/]/).pop() || 'download';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const fileName = toolPath.split(/[\\/]/).pop() || 'download';
+
+    // 使用 fetch + Blob URL 下載（解決跨域 <a download> 無效問題）
+    fetch(downloadUrl)
+      .then(resp => {
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.blob();
+      })
+      .then(blob => {
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
+        toast('✅ 下載完成');
+      })
+      .catch(() => {
+        // fallback：若 fetch 被阻擋（如 HTTPS→HTTP 混合內容），改用新分頁
+        window.open(downloadUrl, '_blank');
+      });
   } else {
     // ── 資料夾 → 直接在網頁開啟，並複製路徑備用 ──
     toast('🌐 正在以網頁開啟資料夾，路徑已複製');
