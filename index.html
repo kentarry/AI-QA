@@ -222,6 +222,20 @@ animation:toastSlideDown .35s cubic-bezier(.22,1,.36,1);transition:opacity .3s,t
 .aitools-action-btn.del:hover{background:rgba(233,69,96,.15);color:var(--accent2);border-color:rgba(233,69,96,.3)}
 .btn-add-tool{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;border:none;padding:8px 20px;border-radius:10px;font-size:.95rem;cursor:pointer;font-weight:600;transition:all .25s;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .btn-add-tool:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(108,99,255,.4)}
+/* ====== 下載確認彈窗 ====== */
+.dl-modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;animation:dlFadeIn .2s ease forwards}
+@keyframes dlFadeIn{to{opacity:1}}
+.dl-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 36px;max-width:420px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,.5);text-align:center;animation:dlSlideUp .25s ease forwards}
+@keyframes dlSlideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.dl-modal-icon{font-size:3rem;margin-bottom:12px}
+.dl-modal-title{font-size:1.2rem;font-weight:700;color:var(--text);margin:0 0 8px 0}
+.dl-modal-filename{font-family:monospace;font-size:.9rem;color:var(--accent);background:rgba(108,99,255,.1);padding:8px 14px;border-radius:8px;border:1px solid rgba(108,99,255,.2);margin:12px 0 20px 0;word-break:break-all}
+.dl-modal-actions{display:flex;gap:12px;justify-content:center}
+.dl-modal-btn{padding:10px 28px;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;border:none}
+.dl-modal-btn.confirm{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;box-shadow:0 4px 16px rgba(108,99,255,.3)}
+.dl-modal-btn.confirm:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(108,99,255,.5)}
+.dl-modal-btn.cancel{background:rgba(255,255,255,.06);color:var(--text-dim);border:1px solid rgba(255,255,255,.1)}
+.dl-modal-btn.cancel:hover{background:rgba(255,255,255,.1);color:var(--text)}
 /* ====== 增量擴充結束 ====== */
 
 </style>
@@ -972,32 +986,34 @@ function openToolFolder(toolPath) {
   const apiBase = getApiBase();
 
   if (isArchive) {
-    // ── 壓縮檔 → 直接觸發瀏覽器下載（不開新分頁）──
-    toast('⬇️ 正在下載壓縮檔…');
-    const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
+    // ── 壓縮檔 → 彈出確認視窗，確認後才下載 ──
     const fileName = toolPath.split(/[\\/]/).pop() || 'download';
+    showDownloadConfirm(fileName, () => {
+      toast('⬇️ 正在下載壓縮檔…');
+      const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
 
-    // 使用 fetch + Blob URL 下載（解決跨域 <a download> 無效問題）
-    fetch(downloadUrl)
-      .then(resp => {
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        return resp.blob();
-      })
-      .then(blob => {
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
-        toast('✅ 下載完成');
-      })
-      .catch(() => {
-        // fallback：若 fetch 被阻擋（如 HTTPS→HTTP 混合內容），改用新分頁
-        window.open(downloadUrl, '_blank');
-      });
+      // 使用 fetch + Blob URL 下載（解決跨域 <a download> 無效問題）
+      fetch(downloadUrl)
+        .then(resp => {
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          return resp.blob();
+        })
+        .then(blob => {
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
+          toast('✅ 下載完成');
+        })
+        .catch(() => {
+          // fallback：若 fetch 被阻擋（如 HTTPS→HTTP 混合內容），改用新分頁
+          window.open(downloadUrl, '_blank');
+        });
+    });
   } else {
     // ── 資料夾 → 直接在網頁開啟，並複製路徑備用 ──
     toast('🌐 正在以網頁開啟資料夾，路徑已複製');
@@ -1005,6 +1021,44 @@ function openToolFolder(toolPath) {
     window.open(viewUrl, '_blank');
     silentCopy(toolPath);
   }
+}
+
+// ── 下載確認彈窗 ──
+function showDownloadConfirm(fileName, onConfirm) {
+  // 建立遮罩層
+  const overlay = document.createElement('div');
+  overlay.className = 'dl-modal-overlay';
+
+  // 建立彈窗內容
+  overlay.innerHTML = `
+    <div class="dl-modal">
+      <div class="dl-modal-icon">⬇️</div>
+      <h3 class="dl-modal-title">確認下載此檔案？</h3>
+      <div class="dl-modal-filename">${fileName.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      <div class="dl-modal-actions">
+        <button class="dl-modal-btn cancel" id="dl-cancel">取消</button>
+        <button class="dl-modal-btn confirm" id="dl-confirm">確認下載</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // 點擊確認
+  overlay.querySelector('#dl-confirm').addEventListener('click', () => {
+    overlay.remove();
+    onConfirm();
+  });
+
+  // 點擊取消
+  overlay.querySelector('#dl-cancel').addEventListener('click', () => {
+    overlay.remove();
+  });
+
+  // 點擊遮罩外區域也關閉
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
 }
 
 function silentCopy(text) {
