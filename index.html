@@ -865,14 +865,13 @@ function renderAiTools() {
             <span class="aitools-refresh-dot"></span>
             即時同步中　最後更新：${updateTimeStr}
           </div>
-          <button class="btn-add-tool" onclick="openToolModal()">＋ 新增工具</button>
         </div>
       </div>
       <div class="aitools-table-wrap">
         ${filtered.length === 0 ? `
           <div class="aitools-empty">
             <div class="aitools-empty-icon">🔍</div>
-            <div class="aitools-empty-text">${searchKeyword ? '找不到符合的 AI 工具' : '尚未新增任何 AI 工具，點擊右上角「＋ 新增工具」開始'}</div>
+            <div class="aitools-empty-text">${searchKeyword ? '找不到符合的 AI 工具' : '尚未同步任何 AI 工具，請確認網路磁碟機資料夾是否有檔案'}</div>
           </div>
         ` : `
           <table class="aitools-table">
@@ -884,7 +883,6 @@ function renderAiTools() {
                 <th>說明描述</th>
                 <th style="text-align:center">複製</th>
                 <th>修改日期</th>
-                <th style="text-align:center">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -899,10 +897,6 @@ function renderAiTools() {
                   <td><textarea class="aitools-desc-input" data-tool-id="${safeIdAttr}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.blur();}" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${esc(tool.description || '')}</textarea></td>
                   <td style="text-align:center"><div class="aitools-copy-btn" onclick="copyToolPath('${safeIdAttr}')" title="一鍵複製完整路徑"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div></td>
                   <td><span class="aitools-update-time"><span class="aitools-clock-icon">🕐</span>${formatUpdateTime(tool.updateTime)}</span></td>
-                  <td><div class="aitools-row-actions">
-                    <button class="aitools-action-btn" onclick="openToolModal('${safeIdAttr}')" title="編輯">✏️</button>
-                    <button class="aitools-action-btn del" onclick="confirmDeleteTool('${safeIdAttr}')" title="刪除">🗑️</button>
-                  </div></td>
                 </tr>
               `}).join('')}
             </tbody>
