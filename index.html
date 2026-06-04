@@ -975,20 +975,19 @@ function openToolFolder(toolPath) {
 
   const apiBase = getApiBase();
 
-  // 如果是 HTTPS 協定 (如 GitHub Pages)，為了繞過 Mixed Content 下載阻擋，會開一個小下載頁面，觸發下載後 2.5 秒會自動關閉 (不留網頁)
+  // 如果是 HTTPS 協定 (如 GitHub Pages)，為了避免瀏覽器安全政策 (Mixed Content) 攔截 HTTP 下載，提示使用者改用區域網路網頁
   if (window.location.protocol === 'https:') {
-    toast('⬇️ 正在準備下載…');
-    const downloadUrl = `${apiBase}/download-page?path=${encodeURIComponent(toolPath)}`;
-    window.open(downloadUrl, '_blank');
+    alert(`⚠️ 【下載提示】\n\n由於瀏覽器安全政策限制「安全網頁 (HTTPS) 無法下載非安全伺服器 (HTTP)」的檔案，在 GitHub Pages 上直接點擊會被阻擋。\n\n請改用「區域網路網址」來開啟看板，即可享受「點擊直接下載/打包資料夾」功能：\n${apiBase}/\n\n(已自動為您複製此區域網路網址，請直接在網址列貼上並 Enter 進入)`);
+    silentCopy(`${apiBase}/`);
   } else {
-    // 本地 HTTP 環境 (如 localhost 或是區域網路 IP 開啟的網頁)，直接在當前分頁背景下載，完全不另開新網頁！
-    toast('⬇️ 正在下載…');
+    // 本地 HTTP 環境 (如區域網路 IP 開啟的網頁)，直接在當前分頁背景下載，100% 成功且完全不另開新網頁！
+    toast('⬇️ 正在打包下載中，請稍候…');
     const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
     window.location.href = downloadUrl;
+    
+    // 在背景自動複製路徑，方便需要的使用者貼上至本機檔案總管
+    silentCopy(toolPath);
   }
-  
-  // 在背景自動複製路徑，方便需要的使用者貼上
-  silentCopy(toolPath);
 }
 
 function silentCopy(text) {
