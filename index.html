@@ -894,7 +894,7 @@ function renderAiTools() {
                 return `
                 <tr>
                   <td><span class="aitools-id">${esc(tool.id || String(idx + 1))}</span></td>
-                  <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '點擊下載壓縮檔' : '點擊開啟資料夾'}：${safePathAttr}"><span class="aitools-tool-icon">${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '⬇️' : '📂'}</span>${esc(tool.toolName || '')}</div></td>
+                  <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '點擊下載壓縮檔' : '點擊複製路徑'}：${safePathAttr}"><span class="aitools-tool-icon">${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '⬇️' : '📂'}</span>${esc(tool.toolName || '')}</div></td>
                   <td><span class="aitools-version">🏷️ ${esc(tool.version || '-')}</span></td>
                   <td><textarea class="aitools-desc-input" data-tool-id="${safeIdAttr}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.blur();}" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${esc(tool.description || '')}</textarea></td>
                   <td style="text-align:center"><div class="aitools-copy-btn" onclick="copyToolPath('${safeIdAttr}')" title="一鍵複製完整路徑"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div></td>
@@ -975,40 +975,17 @@ function openToolFolder(toolPath) {
 
   const ext = getExtension(toolPath);
   const isArchive = ARCHIVE_EXTS.includes(ext);
-  
-  // 開啟資料夾必須在「操作者自己本機的電腦」執行，所以強制將 API 設為本機 IP 127.0.0.1
-  const localApiBase = 'http://127.0.0.1:3939';
   const apiBase = getApiBase();
 
   if (isArchive) {
-    // ── 壓縮檔 → 觸發瀏覽器下載 (使用可跨網域的中央伺服器/本機伺服器下載) ──
+    // ── 壓縮檔 → 觸發瀏覽器下載 ──
     toast('⬇️ 正在下載壓縮檔…');
     const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
     window.open(downloadUrl, '_blank');
   } else {
-    // ── 資料夾 → 開啟資料夾 ──
-    // 如果是 HTTPS 網域 (如 GitHub Pages)，為了繞過 Mixed Content 限制，直接用 window.open 並帶有 format=html
-    if (window.location.protocol === 'https:') {
-      toast('📂 嘗試開啟本機資料夾，路徑已複製備用');
-      const apiUrl = `${localApiBase}/open-folder?path=${encodeURIComponent(toolPath)}&format=html`;
-      window.open(apiUrl, '_blank');
-      silentCopy(toolPath);
-    } else {
-      // 本地 HTTP 環境 (如 localhost 或是區域網路電腦)，直接透過 fetch 呼叫操作者本機的 127.0.0.1，不閃爍分頁
-      const apiUrl = `${localApiBase}/open-folder?path=${encodeURIComponent(toolPath)}`;
-      fetch(apiUrl)
-        .then(r => r.json())
-        .then(res => {
-          if (res && res.success) {
-            toast('📂 已開啟資料夾');
-          } else {
-            fallbackCopy(toolPath);
-          }
-        })
-        .catch(() => {
-          fallbackCopy(toolPath);
-        });
-    }
+    // ── 資料夾 → 直接複製路徑 ──
+    // 免去所有人需要執行背景服務的繁瑣，徹底解決開錯電腦資料夾的問題
+    fallbackCopy(toolPath);
   }
 }
 
