@@ -665,7 +665,7 @@ const apiServer = http.createServer((req, res) => {
     return;
   }
 
-  // ── 下載壓縮檔 (所有用戶可用) ──
+  // ── 下載壓縮檔 或 整個資料夾打包 (所有用戶可用) ──
   if (url.pathname === '/download-file' && req.method === 'GET') {
     const filePath = url.searchParams.get('path');
     if (!filePath) {
@@ -674,45 +674,91 @@ const apiServer = http.createServer((req, res) => {
       return;
     }
 
-    const ext = path.extname(filePath).toLowerCase();
-    if (!ARCHIVE_EXTENSIONS.includes(ext)) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'Not a supported archive file' }));
-      return;
-    }
-
     try {
       const stat = fs.statSync(filePath);
-      if (!stat.isFile()) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: 'Path is not a file' }));
-        return;
-      }
-
       const fileName = path.basename(filePath);
-      const mimeType = MIME_MAP[ext] || 'application/octet-stream';
 
-      writeLog(`⬇️ Downloading file: ${filePath} (${stat.size} bytes)`);
-
-      res.writeHead(200, {
-        'Content-Type': mimeType,
-        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-        'Content-Length': stat.size
-      });
-
-      const stream = fs.createReadStream(filePath);
-      stream.pipe(res);
-      stream.on('error', (err) => {
-        writeLog(`[Error] File stream error: ${err.message}`);
-        if (!res.headersSent) {
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, error: err.message }));
+      if (stat.isFile()) {
+        // ── 壓縮檔下載 ──
+        const ext = path.extname(filePath).toLowerCase();
+        if (!ARCHIVE_EXTENSIONS.includes(ext)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Not a supported archive file' }));
+          return;
         }
-      });
+
+        const mimeType = MIME_MAP[ext] || 'application/octet-stream';
+        writeLog(`⬇️ Downloading file: ${filePath} (${stat.size} bytes)`);
+
+        res.writeHead(200, {
+          'Content-Type': mimeType,
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+          'Content-Length': stat.size
+        });
+
+        const stream = fs.createReadStream(filePath);
+        stream.pipe(res);
+        stream.on('error', (err) => {
+          writeLog(`[Error] File stream error: ${err.message}`);
+          if (!res.headersSent) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        });
+      } else if (stat.isDirectory()) {
+        // ── 資料夾即時壓縮成 ZIP 下載 ──
+        const tempZipName = `${fileName}.zip`;
+        const tempZipPath = path.join(__dirname, `temp_download_${Date.now()}.zip`);
+        
+        writeLog(`🤐 Zipping folder for download: ${filePath} -> ${tempZipPath}`);
+        
+        const psPath = filePath.replace(/'/g, "''");
+        const psDest = tempZipPath.replace(/'/g, "''");
+        const cmd = `powershell -Command "Compress-Archive -Path '${psPath}' -DestinationPath '${psDest}' -Force"`;
+        
+        exec(cmd, (err) => {
+          if (err) {
+            writeLog(`[Error] Zipping failed: ${err.message}`);
+            res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(`<h3>壓縮資料夾失敗: ${err.message}</h3>`);
+            return;
+          }
+
+          try {
+            const zipStat = fs.statSync(tempZipPath);
+            writeLog(`⬇️ Downloading zipped folder: ${tempZipName} (${zipStat.size} bytes)`);
+
+            res.writeHead(200, {
+              'Content-Type': 'application/zip',
+              'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(tempZipName)}`,
+              'Content-Length': zipStat.size
+            });
+
+            const stream = fs.createReadStream(tempZipPath);
+            stream.pipe(res);
+            
+            // 下載完成後刪除暫存 zip 檔
+            res.on('finish', () => {
+              fs.unlink(tempZipPath, (unlinkErr) => {
+                if (unlinkErr) writeLog(`[Warning] Failed to delete temp zip: ${unlinkErr.message}`);
+              });
+            });
+            
+            stream.on('error', (streamErr) => {
+              writeLog(`[Error] Zip stream error: ${streamErr.message}`);
+              fs.unlink(tempZipPath, () => {});
+            });
+          } catch (statErr) {
+            writeLog(`[Error] Zip file access error: ${statErr.message}`);
+            res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(`<h3>檔案存取失敗: ${statErr.message}</h3>`);
+          }
+        });
+      }
     } catch (err) {
-      writeLog(`[Error] File access error: ${err.message}`);
+      writeLog(`[Error] Path access error: ${err.message}`);
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'File not found: ' + err.message }));
+      res.end(JSON.stringify({ success: false, error: 'Path not found: ' + err.message }));
     }
     return;
   }
