@@ -978,9 +978,9 @@ function openToolFolder(toolPath) {
   const apiBase = getApiBase();
 
   if (isArchive) {
-    // ── 壓縮檔 → 觸發瀏覽器下載 ──
-    toast('⬇️ 正在下載壓縮檔…');
-    const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
+    // ── 壓縮檔 → 觸發瀏覽器下載 (改為請求 /download-page 以避開 HTTPS 下載 HTTP 的 Mixed Content 阻擋政策) ──
+    toast('⬇️ 正在準備下載壓縮檔…');
+    const downloadUrl = `${apiBase}/download-page?path=${encodeURIComponent(toolPath)}`;
     window.open(downloadUrl, '_blank');
   } else {
     // ── 資料夾 → 直接在網頁開啟，並複製路徑備用 ──
