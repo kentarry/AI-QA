@@ -894,7 +894,7 @@ function renderAiTools() {
                 return `
                 <tr>
                   <td><span class="aitools-id">${esc(tool.id || String(idx + 1))}</span></td>
-                  <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '點擊下載壓縮檔' : '點擊複製路徑'}：${safePathAttr}"><span class="aitools-tool-icon">${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '⬇️' : '📂'}</span>${esc(tool.toolName || '')}</div></td>
+                  <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '點擊下載壓縮檔' : '網頁開啟資料夾(路徑已複製)'}：${safePathAttr}"><span class="aitools-tool-icon">${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '⬇️' : '📂'}</span>${esc(tool.toolName || '')}</div></td>
                   <td><span class="aitools-version">🏷️ ${esc(tool.version || '-')}</span></td>
                   <td><textarea class="aitools-desc-input" data-tool-id="${safeIdAttr}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.blur();}" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${esc(tool.description || '')}</textarea></td>
                   <td style="text-align:center"><div class="aitools-copy-btn" onclick="copyToolPath('${safeIdAttr}')" title="一鍵複製完整路徑"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div></td>
@@ -983,9 +983,11 @@ function openToolFolder(toolPath) {
     const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
     window.open(downloadUrl, '_blank');
   } else {
-    // ── 資料夾 → 直接複製路徑 ──
-    // 免去所有人需要執行背景服務的繁瑣，徹底解決開錯電腦資料夾的問題
-    fallbackCopy(toolPath);
+    // ── 資料夾 → 直接在網頁開啟，並複製路徑備用 ──
+    toast('🌐 正在以網頁開啟資料夾，路徑已複製');
+    const viewUrl = `${apiBase}/view-folder?path=${encodeURIComponent(toolPath)}`;
+    window.open(viewUrl, '_blank');
+    silentCopy(toolPath);
   }
 }
 
