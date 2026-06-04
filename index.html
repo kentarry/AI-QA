@@ -975,10 +975,13 @@ function openToolFolder(toolPath) {
 
   const ext = getExtension(toolPath);
   const isArchive = ARCHIVE_EXTS.includes(ext);
+  
+  // 開啟資料夾必須在「操作者自己本機的電腦」執行，所以強制將 API 設為本機 IP 127.0.0.1
+  const localApiBase = 'http://127.0.0.1:3939';
   const apiBase = getApiBase();
 
   if (isArchive) {
-    // ── 壓縮檔 → 觸發瀏覽器下載 ──
+    // ── 壓縮檔 → 觸發瀏覽器下載 (使用可跨網域的中央伺服器/本機伺服器下載) ──
     toast('⬇️ 正在下載壓縮檔…');
     const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
     window.open(downloadUrl, '_blank');
@@ -986,13 +989,13 @@ function openToolFolder(toolPath) {
     // ── 資料夾 → 開啟資料夾 ──
     // 如果是 HTTPS 網域 (如 GitHub Pages)，為了繞過 Mixed Content 限制，直接用 window.open 並帶有 format=html
     if (window.location.protocol === 'https:') {
-      toast('📂 嘗試開啟資料夾，路徑已複製備用');
-      const apiUrl = `${apiBase}/open-folder?path=${encodeURIComponent(toolPath)}&format=html`;
+      toast('📂 嘗試開啟本機資料夾，路徑已複製備用');
+      const apiUrl = `${localApiBase}/open-folder?path=${encodeURIComponent(toolPath)}&format=html`;
       window.open(apiUrl, '_blank');
       silentCopy(toolPath);
     } else {
-      // 本地 HTTP 環境，直接 fetch
-      const apiUrl = `${apiBase}/open-folder?path=${encodeURIComponent(toolPath)}`;
+      // 本地 HTTP 環境 (如 localhost 或是區域網路電腦)，直接透過 fetch 呼叫操作者本機的 127.0.0.1，不閃爍分頁
+      const apiUrl = `${localApiBase}/open-folder?path=${encodeURIComponent(toolPath)}`;
       fetch(apiUrl)
         .then(r => r.json())
         .then(res => {
