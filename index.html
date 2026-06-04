@@ -194,7 +194,7 @@ animation:toastSlideDown .35s cubic-bezier(.22,1,.36,1);transition:opacity .3s,t
 .aitools-copy-btn:active{transform:scale(.92)}
 .aitools-copy-btn svg{width:18px;height:18px;stroke:var(--text-dim);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
 .aitools-copy-btn:hover svg{stroke:#a5a0ff}
-.aitools-desc-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text-dim);padding:8px 12px;border-radius:6px;font-size:.9rem;font-family:inherit;outline:none;transition:all .25s;line-height:1.5;resize:vertical;min-height:56px;display:block}
+.aitools-desc-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text-dim);padding:8px 12px;border-radius:6px;font-size:.9rem;font-family:inherit;outline:none;transition:all .25s;line-height:1.5;resize:vertical;min-height:56px;display:block;word-break:break-all;white-space:pre-wrap;overflow-y:hidden}
 .aitools-desc-input::placeholder{color:rgba(255,255,255,.2)}
 .aitools-desc-input:focus{border-color:var(--accent);background:rgba(255,255,255,.08);color:var(--text);box-shadow:0 0 0 2px rgba(108,99,255,.15)}
 .aitools-desc-input.saved{border-color:#0f9b58;box-shadow:0 0 8px rgba(15,155,88,.4)}
@@ -896,7 +896,7 @@ function renderAiTools() {
                   <td><span class="aitools-id">${esc(tool.id || String(idx + 1))}</span></td>
                   <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '點擊下載壓縮檔' : '點擊開啟資料夾'}：${safePathAttr}"><span class="aitools-tool-icon">${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '⬇️' : '📂'}</span>${esc(tool.toolName || '')}</div></td>
                   <td><span class="aitools-version">🏷️ ${esc(tool.version || '-')}</span></td>
-                  <td><textarea class="aitools-desc-input" data-tool-id="${safeIdAttr}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.blur();}">${esc(tool.description || '')}</textarea></td>
+                  <td><textarea class="aitools-desc-input" data-tool-id="${safeIdAttr}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.blur();}" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${esc(tool.description || '')}</textarea></td>
                   <td style="text-align:center"><div class="aitools-copy-btn" onclick="copyToolPath('${safeIdAttr}')" title="一鍵複製完整路徑"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div></td>
                   <td><span class="aitools-update-time"><span class="aitools-clock-icon">🕐</span>${formatUpdateTime(tool.updateTime)}</span></td>
                   <td><div class="aitools-row-actions">
@@ -913,6 +913,12 @@ function renderAiTools() {
   }
   
   board.appendChild(container);
+
+  // 畫面載入時自動將所有說明描述框撐高至適當高度
+  container.querySelectorAll('.aitools-desc-input').forEach(el => {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  });
 }
 
 // 前端 inline-edit 儲存描述至 GAS
