@@ -989,7 +989,6 @@ function openToolFolder(toolPath) {
     // ── 壓縮檔 → 彈出確認視窗，確認後才下載 ──
     const fileName = toolPath.split(/[\\/]/).pop() || 'download';
     showDownloadConfirm(fileName, () => {
-      toast('⬇️ 正在下載壓縮檔…');
       const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
 
       // 使用 fetch + Blob URL 下載（解決跨域 <a download> 無效問題）
