@@ -203,17 +203,48 @@ const apiServer = http.createServer((req, res) => {
   // ── 開啟資料夾 (僅在伺服器本機有效) ──
   if (url.pathname === '/open-folder' && req.method === 'GET') {
     const folderPath = url.searchParams.get('path');
+    const format = url.searchParams.get('format');
     if (!folderPath) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'Missing path parameter' }));
+      if (format === 'html') {
+        res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end('<h3>錯誤: 缺少 path 參數</h3>');
+      } else {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Missing path parameter' }));
+      }
       return;
     }
 
     const cmd = `explorer "${folderPath.replace(/"/g, '')}"`;
     writeLog(`📂 Opening folder: ${folderPath}`);
     exec(cmd, (err) => {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true }));
+      if (format === 'html') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>正在開啟資料夾...</title>
+          </head>
+          <body style="background: #1e1e24; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+            <div style="text-align: center; padding: 30px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 32px rgba(0,0,0,0.3); font-size: 16px;">
+              <div style="font-size: 3rem; margin-bottom: 16px;">📂</div>
+              <h3 style="margin: 0 0 8px 0; font-weight: 600;">已嘗試開啟資料夾</h3>
+              <p style="margin: 0; color: rgba(255,255,255,0.6); font-size: 0.9rem;">本視窗將於 0.5 秒後自動關閉</p>
+            </div>
+            <script>
+              setTimeout(() => {
+                window.close();
+              }, 500);
+            </script>
+          </body>
+          </html>
+        `);
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      }
     });
     return;
   }

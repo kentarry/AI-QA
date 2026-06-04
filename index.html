@@ -194,7 +194,7 @@ animation:toastSlideDown .35s cubic-bezier(.22,1,.36,1);transition:opacity .3s,t
 .aitools-copy-btn:active{transform:scale(.92)}
 .aitools-copy-btn svg{width:18px;height:18px;stroke:var(--text-dim);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
 .aitools-copy-btn:hover svg{stroke:#a5a0ff}
-.aitools-desc-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text-dim);padding:8px 12px;border-radius:6px;font-size:.9rem;font-family:inherit;outline:none;transition:all .25s;line-height:1.5}
+.aitools-desc-input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text-dim);padding:8px 12px;border-radius:6px;font-size:.9rem;font-family:inherit;outline:none;transition:all .25s;line-height:1.5;resize:vertical;min-height:56px;display:block}
 .aitools-desc-input::placeholder{color:rgba(255,255,255,.2)}
 .aitools-desc-input:focus{border-color:var(--accent);background:rgba(255,255,255,.08);color:var(--text);box-shadow:0 0 0 2px rgba(108,99,255,.15)}
 .aitools-desc-input.saved{border-color:#0f9b58;box-shadow:0 0 8px rgba(15,155,88,.4)}
@@ -211,11 +211,10 @@ animation:toastSlideDown .35s cubic-bezier(.22,1,.36,1);transition:opacity .3s,t
 .aitools-table th:nth-child(1),.aitools-table td:nth-child(1){width:42px;min-width:42px}
 .aitools-table th:nth-child(2),.aitools-table td:nth-child(2){min-width:130px}
 .aitools-table th:nth-child(3),.aitools-table td:nth-child(3){min-width:80px}
-.aitools-table th:nth-child(4),.aitools-table td:nth-child(4){min-width:180px}
-.aitools-table th:nth-child(5),.aitools-table td:nth-child(5){min-width:150px}
-.aitools-table th:nth-child(6),.aitools-table td:nth-child(6){width:50px;min-width:50px;text-align:center}
-.aitools-table th:nth-child(7),.aitools-table td:nth-child(7){min-width:155px;white-space:nowrap}
-.aitools-table th:nth-child(8),.aitools-table td:nth-child(8){width:80px;min-width:80px;text-align:center}
+.aitools-table th:nth-child(4),.aitools-table td:nth-child(4){min-width:350px}
+.aitools-table th:nth-child(5),.aitools-table td:nth-child(5){width:50px;min-width:50px;text-align:center}
+.aitools-table th:nth-child(6),.aitools-table td:nth-child(6){min-width:155px;white-space:nowrap}
+.aitools-table th:nth-child(7),.aitools-table td:nth-child(7){width:80px;min-width:80px;text-align:center}
 /* 操作按鈕 */
 .aitools-row-actions{display:flex;gap:4px;justify-content:center}
 .aitools-action-btn{background:none;border:1px solid rgba(255,255,255,.08);color:var(--text-dim);cursor:pointer;padding:6px;border-radius:8px;font-size:1rem;transition:all .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center}
@@ -882,7 +881,6 @@ function renderAiTools() {
                 <th>#</th>
                 <th>工具名稱</th>
                 <th>版本</th>
-                <th>資料夾路徑</th>
                 <th>說明描述</th>
                 <th style="text-align:center">複製</th>
                 <th>修改日期</th>
@@ -898,8 +896,7 @@ function renderAiTools() {
                   <td><span class="aitools-id">${esc(tool.id || String(idx + 1))}</span></td>
                   <td><div class="aitools-tool-name" data-path="${safePathAttr}" onclick="openToolFolder(this.dataset.path)" title="${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '點擊下載壓縮檔' : '點擊開啟資料夾'}：${safePathAttr}"><span class="aitools-tool-icon">${/\.(rar|7z|zip)$/i.test(tool.pathOutline||'') ? '⬇️' : '📂'}</span>${esc(tool.toolName || '')}</div></td>
                   <td><span class="aitools-version">🏷️ ${esc(tool.version || '-')}</span></td>
-                  <td style="font-size:.85rem;color:var(--text-dim);word-break:break-all">${esc(tool.pathOutline || '-')}</td>
-                  <td><input class="aitools-desc-input" data-tool-id="${safeIdAttr}" value="${esc(tool.description || '')}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter'){this.blur()}"></td>
+                  <td><textarea class="aitools-desc-input" data-tool-id="${safeIdAttr}" placeholder="點此輸入工具說明…" onblur="saveAiToolDesc(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); this.blur();}">${esc(tool.description || '')}</textarea></td>
                   <td style="text-align:center"><div class="aitools-copy-btn" onclick="copyToolPath('${safeIdAttr}')" title="一鍵複製完整路徑"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div></td>
                   <td><span class="aitools-update-time"><span class="aitools-clock-icon">🕐</span>${formatUpdateTime(tool.updateTime)}</span></td>
                   <td><div class="aitools-row-actions">
@@ -976,26 +973,49 @@ function openToolFolder(toolPath) {
 
   if (isArchive) {
     // ── 壓縮檔 → 觸發瀏覽器下載 ──
-    toast('⬇️ 正在準備下載…');
+    toast('⬇️ 正在下載壓縮檔…');
     const downloadUrl = `${apiBase}/download-file?path=${encodeURIComponent(toolPath)}`;
-    // 使用 window.open 避免 HTTPS→HTTP 的 mixed-content 被擋 (導航不受限)
     window.open(downloadUrl, '_blank');
   } else {
-    // ── 資料夾 → 複製路徑到剪貼簿並提示 ──
-    // (瀏覽器安全限制無法從網頁直接開啟他人電腦的資料夾)
-    const apiUrl = `${apiBase}/open-folder?path=${encodeURIComponent(toolPath)}`;
-    fetch(apiUrl)
-      .then(r => r.json())
-      .then(res => {
-        if (res && res.success) {
-          toast('📂 已開啟資料夾');
-        } else {
+    // ── 資料夾 → 開啟資料夾 ──
+    // 如果是 HTTPS 網域 (如 GitHub Pages)，為了繞過 Mixed Content 限制，直接用 window.open 並帶有 format=html
+    if (window.location.protocol === 'https:') {
+      toast('📂 嘗試開啟資料夾，路徑已複製備用');
+      const apiUrl = `${apiBase}/open-folder?path=${encodeURIComponent(toolPath)}&format=html`;
+      window.open(apiUrl, '_blank');
+      silentCopy(toolPath);
+    } else {
+      // 本地 HTTP 環境，直接 fetch
+      const apiUrl = `${apiBase}/open-folder?path=${encodeURIComponent(toolPath)}`;
+      fetch(apiUrl)
+        .then(r => r.json())
+        .then(res => {
+          if (res && res.success) {
+            toast('📂 已開啟資料夾');
+          } else {
+            fallbackCopy(toolPath);
+          }
+        })
+        .catch(() => {
           fallbackCopy(toolPath);
-        }
-      })
-      .catch(() => {
-        fallbackCopy(toolPath);
-      });
+        });
+    }
+  }
+}
+
+function silentCopy(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+    } catch (e) {}
+    document.body.removeChild(ta);
   }
 }
 
